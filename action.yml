@@ -1,0 +1,192 @@
+name: Run Script Kaggle
+author: Kevin Kibe
+branding:
+  icon: upload
+  color: green
+description: Run any Python/R on Kaggle as tests/code execution.
+
+inputs:
+  username:
+    description: kaggle username
+    required: true
+  key:
+    description: kaggle token
+    required: true
+  title:
+    description: The title of the kernel
+    required: true
+  custom_script:
+    description: Custom script content to run in the notebook
+    required: true
+    default: "print(\"Kaggle Script Runner Successful!\")"
+  enable_gpu:
+    description: Whether or not kernel should run on a GPU.
+    required: false
+    default: "false"
+  enable_internet:
+    description: Whether or not kernel should be able to access the internet.
+    required: false
+    default: "false"
+  dataset_sources:
+    description: A list of data sources that kernel should use. Each dataset is specified as {username}/{dataset-slug}.
+    required: false
+    default: ""
+  competition_sources:
+    description: A list of competition data sources that kernel should use.
+    required: false
+    default: ""
+  kernel_sources:
+    description: A list of kernel data sources that kernel should use. Each dataset is specified as {username}/{kernel-slug}.
+    required: false
+    default: ""
+
+outputs:
+  automatic_releases_tag:
+    description: The release tag this action just processed
+    value: ""
+  upload_url:
+    description: The URL for uploading additional assets to the release
+    value: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install kaggle CLI tools
+      shell: bash
+      run: |
+        python -m pip install --upgrade kaggle --user
+
+    - name: Setup kaggle.json
+      shell: bash
+      run: |
+        mkdir -p ~/.kaggle
+        echo "{\"username\":\"${{ inputs.username }}\",\"key\":\"${{ inputs.key }}\"}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+
+    - name: Set up Notebook Kernel
+      shell: bash
+      run: |
+        OUTPUT_NOTEBOOK="project_setup.ipynb"
+        REPO_URL=$(git config --get remote.origin.url)
+        REPO_NAME=$(basename "$REPO_URL" .git)
+        BRANCH_NAME==$(git rev-parse --abbrev-ref HEAD)
+        CUSTOM_SCRIPT="${{ inputs.custom_script }}"
+
+        # Read dependencies from requirements.txt for pip install
+        dependencies="!cd /kaggle/working/$REPO_NAME && pip install -r requirements.txt"
+
+        # Create the Jupyter notebook JSON structure with three cells
+        cat <<EOM > "$OUTPUT_NOTEBOOK"
+        {
+          "cells": [
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": [
+                "!git clone --branch $BRANCH_NAME $REPO_URL"
+              ]
+            },
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": [
+                "$dependencies"
+              ]
+            },
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": [
+                "$CUSTOM_SCRIPT"
+              ]
+            }
+          ],
+          "metadata": {
+            "kernelspec": {
+              "display_name": "Python 3",
+              "language": "python",
+              "name": "python3"
+            },
+            "language_info": {
+              "name": "python",
+              "version": "3.8"
+            }
+          },
+          "nbformat": 4,
+          "nbformat_minor": 2
+        }
+        EOM
+
+        echo "Notebook '$OUTPUT_NOTEBOOK' created with Git clone, pip install, and custom script cells."
+
+    - name: Setup test
+      shell: bash
+      run: |
+        # Set location to the action path
+        cd '${{ github.action_path }}'
+        
+        # Initialize Kaggle kernel
+        kaggle kernels init -p '${{ github.action_path }}'
+        
+        # Process kernel-metadata.json
+        json_path='${{ github.action_path }}/kernel-metadata.json'
+        metadata=$(jq -r '. | tojson' < "$json_path")
+        
+        # Update metadata
+        metadata=$(echo "$metadata" | jq --arg title '${{ inputs.title }}' \
+                                        --arg code_file '${{ github.workspace }}/$OUTPUT_NOTEBOOK' \
+                                        --arg enable_gpu '${{ inputs.enable_gpu }}' \
+                                        --arg enable_internet '${{ inputs.enable_internet }}' \
+                                        '. | 
+                                          .id = (.id | split("/")[0]) + "/" + $title |
+                                          .title = $title |
+                                          .code_file = $code_file |
+                                          .language = "python" |
+                                          .kernel_type = "notebook" |
+                                          .enable_gpu = ($enable_gpu == "enable") |
+                                          .enable_internet = ($enable_internet == "enable")')
+        
+        # Save updated metadata
+        echo "$metadata" > "$json_path"
+        
+        # Push Kaggle kernel
+        kaggle kernels push
+
+    - name: Check status
+      shell: bash
+      run: |
+        # Set location to the action path
+        cd '${{ github.action_path }}'
+        
+        kernel_name='${{ inputs.title }}'
+        
+        # Check kernel status
+        while true; do
+          status=$(kaggle kernels status "$kernel_name" 2>&1)
+          if [[ "$status" == *"error"* ]]; then
+            echo "::error::FAIL: Run(s) failed." >&2
+            exit 1
+          elif [[ "$status" == *"cancel"* ]]; then
+            echo "::error::FAIL: Run(s) failed. The Kaggle kernel has been canceled." >&2
+            exit 1
+          elif [[ "$status" == *"complete"* ]]; then
+            echo "SUCCESS: Run successfully completed!" >&2
+            break
+          else
+            sleep 3
+          fi
+        done
+        
+        # Output full log on failure
+        if [ $? -ne 0 ]; then
+          echo "::group::Full log"
+          cat "$kernel_name.log"
+          echo "::endgroup::"
+          exit 1
+        fi

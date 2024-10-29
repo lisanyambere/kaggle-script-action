@@ -20,5 +20,5 @@ jobs:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
           title: "My Test Kernel"
-          custom_script: 'print("Now what\!")'
+          custom_script: 'print("Now what")'
 

@@ -129,18 +129,18 @@ runs:
       shell: bash
       run: |
         # Set location to the action path
-        cd '${{ github.action_path }}'
+       cd "${{ github.workspace }}"
         
         # Initialize Kaggle kernel
-        kaggle kernels init -p '${{ github.action_path }}'
+        kaggle kernels init -p "${{ github.workspace }}"
         
         # Process kernel-metadata.json
-        json_path='${{ github.action_path }}/kernel-metadata.json'
+        json_path="${{ github.workspace }}/kernel-metadata.json"
         metadata=$(jq -r '. | tojson' < "$json_path")
         
         # Update metadata with relative notebook path
         metadata=$(echo "$metadata" | jq --arg title '${{ inputs.title }}' \
-                                        --arg code_file "$OUTPUT_NOTEBOOK" \
+                                        --arg code_file "project_setup.ipynb" \
                                         --arg enable_gpu '${{ inputs.enable_gpu }}' \
                                         --arg enable_internet '${{ inputs.enable_internet }}' \
                                         '. | 

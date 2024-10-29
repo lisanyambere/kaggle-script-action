@@ -1,8 +1,6 @@
 name: Run Script Kaggle
 author: Kevin Kibe
-branding:
-  icon: upload
-  color: green
+
 description: Run any Python/R on Kaggle as tests/code execution.
 
 inputs:
@@ -260,6 +258,6 @@ runs:
             exit 1
         fi
 
-  branding:
-    icon: activity
-    color: green
+branding:
+  icon: upload
+  color: green

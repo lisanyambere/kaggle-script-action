@@ -256,11 +256,6 @@ runs:
                 return 1
             fi
         
-            # Check if KAGGLE_KEY is set
-            if [ -z "${{ inputs.key }}" ]; then
-                echo "::error::Kaggle API key not properly configured. Please check KAGGLE_KEY"
-                return 1
-            fi
         
             # Attempt to get kernel status with error capture
             local status_output

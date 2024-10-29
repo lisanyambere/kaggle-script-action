@@ -19,8 +19,8 @@ jobs:
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
-          title: "Kernel Test"
+          title: "Kernel Test v2"
           custom_script: "print('Success')"
           enable_internet: true
-          enable_gpu: true
-          enable_tpu: true
+          enable_gpu: false
+          enable_tpu: false

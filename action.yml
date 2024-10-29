@@ -183,24 +183,25 @@ runs:
         
         metadata=$(jq -r '. | tojson' < "$json_path")
         
-        title="${{ inputs.title }}"  
-        formatted_title=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        kernel_name="${{ inputs.title }}"  
+        kernel_slug=$(echo "kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
         
         log_message "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \
-                                 --arg code_file "$OUTPUT_NOTEBOOK" \
-                                 --argjson enable_gpu "${{ inputs.enable_gpu }}" \
-                                 --argjson enable_internet "${{ inputs.enable_internet }}" \
-                                 --argjson enable_tpu "${{ inputs.enable_tpu }}" \
-                                 '. |
-                                   .id = (.id | split("/")[0]) + "/" + $title |
-                                   .title = $title |
-                                   .code_file = $code_file |
-                                   .language = "python" |
-                                   .kernel_type = "notebook" |
-                                   .enable_gpu = $enable_gpu |
-                                   .enable_internet = $enable_internet |
-                                   .enable_tpu = $enable_tpu')
+                                         --arg id "kernel_slug" \
+                                         --arg code_file "$OUTPUT_NOTEBOOK" \
+                                         --argjson enable_gpu "${{ inputs.enable_gpu }}" \
+                                         --argjson enable_internet "${{ inputs.enable_internet }}" \
+                                         --argjson enable_tpu "${{ inputs.enable_tpu }}" \
+                                         '. |
+                                           .id = $id |
+                                           .title = $title |
+                                           .code_file = $code_file |
+                                           .language = "python" |
+                                           .kernel_type = "notebook" |
+                                           .enable_gpu = $enable_gpu |
+                                           .enable_internet = $enable_internet |
+                                           .enable_tpu = $enable_tpu')
         
         echo "Saving updated metadata back to $json_path"
         echo "$metadata" | jq '.' > "$json_path"
@@ -219,7 +220,9 @@ runs:
       run: |
         
         username="${{ inputs.username }}"
-        kernel_name="${username}/${{ inputs.title }}"
+        raw_kernel_name="${{ inputs.title }}"
+        kernel_slug=$(echo "$raw_kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        kernel_name="${username}/${kernel_slug}"
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
         echo "Checking status for Kaggle kernel: '$kernel_name'"
@@ -256,3 +259,7 @@ runs:
             log_message "::endgroup::"
             exit 1
         fi
+
+  branding:
+    icon: activity
+    color: green

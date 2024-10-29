@@ -76,7 +76,8 @@ runs:
         echo "Setting up the notebook for Kaggle execution..."
         
         # Define the output notebook and retrieve repository information
-        OUTPUT_NOTEBOOK="project_setup.ipynb"
+        action_path=$(realpath "${{ github.action_path }}")
+        OUTPUT_NOTEBOOK="$action_path/project_setup.ipynb"
         echo "Notebook will be saved as: $OUTPUT_NOTEBOOK"
         
         REPO_URL=$(git config --get remote.origin.url)

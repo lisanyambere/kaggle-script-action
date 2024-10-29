@@ -195,10 +195,13 @@ runs:
     - name: Check status
       shell: bash
       run: |
+        MAX_WAIT_TIME=3600  # 1 hour timeout
+        CHECK_INTERVAL=10   # Check every 10 seconds
+        TIME_ELAPSED=0
+        
         # Set location to the action path
         echo "Setting action path to: '$action_path'"
         action_path=$(realpath "${{ github.action_path }}")
-        
         echo "Resolved action path: '$action_path'"
         cd "$action_path"
         
@@ -206,32 +209,64 @@ runs:
         kernel_name="${{ inputs.title }}"
         echo "Checking status for Kaggle kernel: '$kernel_name'"
         
-        # Check kernel status
-        while true; do
-          echo "Retrieving kernel status..."
-          status=$(kaggle kernels status "$kernel_name" 2>&1)
-          echo "Current kernel status: $status"
+        # Function to check kernel status
+        check_kernel_status() {
+            kaggle kernels status "$kernel_name" 2>&1
+        }
         
-          if [[ "$status" == *"error"* ]]; then
-            echo "::error::FAIL: Run(s) failed." >&2
-            exit 1
-          elif [[ "$status" == *"cancel"* ]]; then
-            echo "::error::FAIL: Run(s) failed. The Kaggle kernel has been canceled." >&2
-            exit 1
-          elif [[ "$status" == *"complete"* ]]; then
-            echo "SUCCESS: Run successfully completed!" >&2
-            break
-          else
-            echo "Kernel is still running. Rechecking in 3 seconds..."
-            sleep 3
-          fi
+        # Function to log with timestamp
+        log_message() {
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+        }
+        
+        # Main loop to check kernel status
+        while [ $TIME_ELAPSED -lt $MAX_WAIT_TIME ]; do
+            log_message "Retrieving kernel status..."
+            status=$(check_kernel_status)
+            log_message "Current kernel status: $status"
+        
+            # Check for different status conditions
+            if [[ "$status" == *"error"* ]]; then
+                log_message "::error::FAIL: Kernel execution failed with error."
+                exit 1
+            elif [[ "$status" == *"cancel"* ]]; then
+                log_message "::error::FAIL: Kernel execution was canceled."
+                exit 1
+            elif [[ "$status" == *"complete"* ]]; then
+                log_message "SUCCESS: Kernel execution completed successfully!"
+                exit 0
+            elif [[ "$status" == *"running"* ]]; then
+                log_message "Kernel is still running..."
+            else
+                log_message "WARNING: Unexpected status received: $status"
+            fi
+        
+            # Update elapsed time and check timeout
+            TIME_ELAPSED=$((TIME_ELAPSED + CHECK_INTERVAL))
+            REMAINING_TIME=$((MAX_WAIT_TIME - TIME_ELAPSED))
+            
+            if [ $REMAINING_TIME -le 0 ]; then
+                log_message "::error::FAIL: Timeout reached after ${MAX_WAIT_TIME} seconds"
+                break
+            fi
+        
+            log_message "Waiting ${CHECK_INTERVAL} seconds before next check (${REMAINING_TIME} seconds remaining)..."
+            sleep $CHECK_INTERVAL
         done
         
-        # Output full log on failure
-        if [ $? -ne 0 ]; then
-          echo "::group::Full log"
-          echo "Displaying the full log for kernel '$kernel_name':"
-          cat "$kernel_name.log"
-          echo "::endgroup::"
-          exit 1
+        # If we exit the loop without success, it's a timeout
+        if [ $TIME_ELAPSED -ge $MAX_WAIT_TIME ]; then
+            log_message "::error::FAIL: Execution timed out after ${MAX_WAIT_TIME} seconds"
+        
+            # Attempt to fetch and display logs
+            log_message "::group::Full Kernel Log"
+            if [ -f "${kernel_name}.log" ]; then
+                cat "${kernel_name}.log"
+            else
+                log_message "No log file found at ${kernel_name}.log"
+                kaggle kernels logs "$kernel_name" 2>&1
+            fi
+            log_message "::endgroup::"
+            exit 1
         fi
+   

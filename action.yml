@@ -84,7 +84,6 @@ runs:
         echo "Repository URL: $REPO_URL"
         
         REPO_NAME=$(basename "$REPO_URL" .git)
-        echo "Repository name determined as: $REPO_NAME"
         
         BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
         echo "Current branch: $BRANCH_NAME"
@@ -94,10 +93,8 @@ runs:
         
         # Define the command for installing dependencies within the cloned directory
         dependencies="!cd /kaggle/working/$REPO_NAME && pip install -r requirements.txt"
-        echo "Dependencies installation command: $dependencies"
         
         # Create the Jupyter notebook JSON structure with three cells
-        echo "Generating Jupyter notebook structure..."
         cat <<EOM > "$OUTPUT_NOTEBOOK"
         {
           "cells": [
@@ -145,10 +142,7 @@ runs:
         }
         EOM
         
-        echo "Notebook '$OUTPUT_NOTEBOOK' created successfully with the following cells:"
-        echo "- Clone the repository from branch: $BRANCH_NAME"
-        echo "- Install dependencies from requirements.txt"
-        echo "- Execute custom script: $CUSTOM_SCRIPT"
+        echo "Notebook '$OUTPUT_NOTEBOOK' created successfully"
 
 
     - name: Setup test
@@ -184,6 +178,9 @@ runs:
         
         echo "Saving updated metadata back to $json_path"
         echo "$metadata" | jq '.' > "$json_path"
+        
+        echo "Final kernel metadata content:"
+        cat "$json_path"  
         
         echo "Pushing Kaggle kernel with updated metadata..."
         kaggle kernels push -p "$action_path"

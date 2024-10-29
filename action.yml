@@ -191,7 +191,7 @@ runs:
                                  --arg code_file "$OUTPUT_NOTEBOOK" \
                                  --argjson enable_gpu "${{ inputs.enable_gpu }}" \
                                  --argjson enable_internet "${{ inputs.enable_internet }}" \
-                                 --argjson enable_internet "${{ inputs.enable_tpu }}" \
+                                 --argjson enable_tpu "${{ inputs.enable_tpu }}" \
                                  '. |
                                    .id = (.id | split("/")[0]) + "/" + $title |
                                    .title = $title |

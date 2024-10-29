@@ -230,8 +230,11 @@ runs:
         while true; do
             log_message "Retrieving kernel status..."
             status=$(kaggle kernels status "$kernel_name" 2>&1)
-
-            if [[ "$status" == *"error"* ]]; then
+    
+            if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
+                log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
+                exit 1
+            elif [[ "$status" == *"error"* ]]; then
                 log_message "::error::FAIL: Test(s) failed."
                 exit 1
             elif [[ "$status" == *"cancel"* ]]; then

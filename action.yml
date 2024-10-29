@@ -163,8 +163,13 @@ runs:
         echo "Loading current metadata for processing..."
         metadata=$(jq -r '. | tojson' < "$json_path")
         
+        title="${{ inputs.title }}"  
+        formatted_title=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        
         echo "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \
+                                         --arg id "${{ inputs.username }}/$formatted_title" \
+                                            '.id = $id | .title = $title')
                                          --arg code_file "$OUTPUT_NOTEBOOK" \
                                          --arg enable_gpu "${{ inputs.enable_gpu }}" \
                                          --arg enable_internet "${{ inputs.enable_internet }}" \
@@ -193,13 +198,21 @@ runs:
       shell: bash
       run: |
         # Set location to the action path
-        cd '${{ github.action_path }}'
+        echo "Setting action path to: '${{ github.action_path }}'"
+        action_path=$(realpath "${{ github.action_path }}")
+        echo "Resolved action path: '$action_path'"
+        cd "$action_path"
         
-        kernel_name='${{ inputs.title }}'
+        # Define the kernel name
+        kernel_name="${{ inputs.title }}"
+        echo "Checking status for Kaggle kernel: '$kernel_name'"
         
         # Check kernel status
         while true; do
+          echo "Retrieving kernel status..."
           status=$(kaggle kernels status "$kernel_name" 2>&1)
+          echo "Current kernel status: $status"
+        
           if [[ "$status" == *"error"* ]]; then
             echo "::error::FAIL: Run(s) failed." >&2
             exit 1
@@ -210,6 +223,7 @@ runs:
             echo "SUCCESS: Run successfully completed!" >&2
             break
           else
+            echo "Kernel is still running. Rechecking in 3 seconds..."
             sleep 3
           fi
         done
@@ -217,6 +231,7 @@ runs:
         # Output full log on failure
         if [ $? -ne 0 ]; then
           echo "::group::Full log"
+          echo "Displaying the full log for kernel '$kernel_name':"
           cat "$kernel_name.log"
           echo "::endgroup::"
           exit 1

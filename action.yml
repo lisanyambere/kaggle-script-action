@@ -218,6 +218,7 @@ runs:
       shell: bash
       run: |
         
+        username="${{ inputs.username }}"
         kernel_name="${username}/${{ inputs.title }}"
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")

@@ -66,60 +66,60 @@ runs:
     - name: Set up Notebook Kernel
       shell: bash
       run: |
-        OUTPUT_NOTEBOOK="${{ github.workspace }}/project_setup.ipynb"  # Define full path for OUTPUT_NOTEBOOK
+        OUTPUT_NOTEBOOK="project_setup.ipynb"  # Relative path for OUTPUT_NOTEBOOK
         REPO_URL=$(git config --get remote.origin.url)
         REPO_NAME=$(basename "$REPO_URL" .git)
         BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
         CUSTOM_SCRIPT="${{ inputs.custom_script }}"
         
-        # Read dependencies from requirements.txt for pip install
+        # Define dependencies installation command with cd to cloned directory
         dependencies="!cd /kaggle/working/$REPO_NAME && pip install -r requirements.txt"
         
         # Create the Jupyter notebook JSON structure with three cells
         cat <<EOM > "$OUTPUT_NOTEBOOK"
         {
-          "cells": [
-            {
-              "cell_type": "code",
-              "execution_count": null,
-              "metadata": {},
-              "outputs": [],
-              "source": [
-                "!git clone --branch $BRANCH_NAME $REPO_URL"
-              ]
-            },
-            {
-              "cell_type": "code",
-              "execution_count": null,
-              "metadata": {},
-              "outputs": [],
-              "source": [
-                "$dependencies"
-              ]
-            },
-            {
-              "cell_type": "code",
-              "execution_count": null,
-              "metadata": {},
-              "outputs": [],
-              "source": [
-                "$CUSTOM_SCRIPT"
-              ]
-            }
-          ],
-          "metadata": {
-            "kernelspec": {
-              "display_name": "Python 3",
-              "language": "python",
-              "name": "python3"
-            },
-            "language_info": {
-              "name": "python",
-              "version": "3.8"
-            }
-          },
-          "nbformat": 4,
-          "nbformat_minor": 2
+        "cells": [
+         {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+             "!git clone --branch $BRANCH_NAME $REPO_URL"
+           ]
+         },
+         {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+             "$dependencies"
+           ]
+         },
+         {
+           "cell_type": "code",
+           "execution_count": null,
+           "metadata": {},
+           "outputs": [],
+           "source": [
+             "$CUSTOM_SCRIPT"
+           ]
+         }
+        ],
+        "metadata": {
+         "kernelspec": {
+           "display_name": "Python 3",
+           "language": "python",
+           "name": "python3"
+         },
+         "language_info": {
+           "name": "python",
+           "version": "3.8"
+         }
+        },
+        "nbformat": 4,
+        "nbformat_minor": 2
         }
         EOM
         
@@ -128,7 +128,7 @@ runs:
     - name: Setup test
       shell: bash
       run: |
-        # Set location to the action path to push ot kernel
+        # Set location to the action path
         cd '${{ github.action_path }}'
         
         # Initialize Kaggle kernel
@@ -138,7 +138,7 @@ runs:
         json_path='${{ github.action_path }}/kernel-metadata.json'
         metadata=$(jq -r '. | tojson' < "$json_path")
         
-        # Update metadata with evaluated notebook path
+        # Update metadata with relative notebook path
         metadata=$(echo "$metadata" | jq --arg title '${{ inputs.title }}' \
                                         --arg code_file "$OUTPUT_NOTEBOOK" \
                                         --arg enable_gpu '${{ inputs.enable_gpu }}' \

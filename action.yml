@@ -26,7 +26,7 @@ inputs:
   enable_internet:
     description: Whether or not kernel should be able to access the internet.
     required: false
-    default: "false"
+    default: "true"
   dataset_sources:
     description: A list of data sources that kernel should use. Each dataset is specified as {username}/{dataset-slug}.
     required: false
@@ -196,8 +196,9 @@ runs:
       shell: bash
       run: |
         # Set location to the action path
-        echo "Setting action path to: '${{ github.action_path }}'"
+        echo "Setting action path to: '$action_path'"
         action_path=$(realpath "${{ github.action_path }}")
+        
         echo "Resolved action path: '$action_path'"
         cd "$action_path"
         

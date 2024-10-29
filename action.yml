@@ -149,6 +149,7 @@ runs:
       shell: bash
       run: |
         action_path=$(realpath "${{ github.action_path }}")
+        OUTPUT_NOTEBOOK="$action_path/project_setup.ipynb"
         
         echo "Navigating to the action path: '$action_path'"
         cd "$action_path"

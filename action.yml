@@ -168,8 +168,6 @@ runs:
         
         echo "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \
-                                         --arg id "${{ inputs.username }}/$formatted_title" \
-                                            '.id = $id | .title = $title')
                                          --arg code_file "$OUTPUT_NOTEBOOK" \
                                          --arg enable_gpu "${{ inputs.enable_gpu }}" \
                                          --arg enable_internet "${{ inputs.enable_internet }}" \

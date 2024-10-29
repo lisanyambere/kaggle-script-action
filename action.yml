@@ -218,131 +218,37 @@ runs:
       shell: bash
       run: |
         
-        # Set default timeout and check interval values
-        MAX_WAIT_TIME=3600  # 1 hour timeout
-        CHECK_INTERVAL=10   # Check every 10 seconds
-        TIME_ELAPSED=0
-        
-        # Set location to the action path
-        echo "Setting action path to: '$action_path'"
+        kernel_name="${{ inputs.title }}"
+        action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
-        echo "Resolved action path: '$action_path'"
-        cd "$action_path"
-        
-        # Get username and kernel title from inputs
-        username="${{ inputs.username }}"
-        kernel_title="${{ inputs.title }}"
-        
-        # Validate inputs
-        if [ -z "$username" ]; then
-            echo "::error::Username is required but was empty"
-            exit 1
-        fi
-        
-        if [ -z "$kernel_title" ]; then
-            echo "::error::Kernel title is required but was empty"
-            exit 1
-        fi
-        
-        # Construct the full kernel name
-        kernel_name="$username/$kernel_title"
         echo "Checking status for Kaggle kernel: '$kernel_name'"
-        
-        # Function to check kernel status with better error handling
-        check_kernel_status() {
-            # Verify Kaggle CLI configuration
-            if ! kaggle --version &>/dev/null; then
-                echo "::error::Kaggle CLI not properly installed or configured"
-                return 1
-            fi
-        
-        
-            # Attempt to get kernel status with error capture
-            local status_output
-            if ! status_output=$(kaggle kernels status "$kernel_name" 2>&1); then
-                if [[ "$status_output" == *"401"* ]] || [[ "$status_output" == *"authentication"* ]]; then
-                    echo "::error::Authentication failed. Please verify your Kaggle credentials"
-                    return 1
-                fi
-                if [[ "$status_output" == *"404"* ]] || [[ "$status_output" == *"not found"* ]]; then
-                    echo "::error::Kernel not found: $kernel_name"
-                    return 1
-                fi
-                echo "::warning::Failed to get kernel status: $status_output"
-                return 1
-            fi
-            echo "$status_output"
-            return 0
-        }
-        
-        # Function to log with timestamp
+
         log_message() {
             echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
         }
-        
-        # Initial status check
-        log_message "Verifying Kaggle configuration and kernel access..."
-        if ! check_kernel_status; then
-            log_message "::error::Initial kernel status check failed"
-            exit 1
-        fi
-        
-        # Main loop to check kernel status
-        while [ $TIME_ELAPSED -lt $MAX_WAIT_TIME ]; do
+        while true; do
             log_message "Retrieving kernel status..."
-            status=$(check_kernel_status)
-            
-            # Check if status command failed
-            if [ $? -ne 0 ]; then
-                log_message "::error::Failed to retrieve kernel status. Retrying in ${CHECK_INTERVAL} seconds..."
-                sleep $CHECK_INTERVAL
-                TIME_ELAPSED=$((TIME_ELAPSED + CHECK_INTERVAL))
-                continue
-            fi
-            
-            log_message "Current kernel status: $status"
-        
-            # Check for different status conditions
+            status=$(kaggle kernels status "$kernel_name" 2>&1)
+
             if [[ "$status" == *"error"* ]]; then
-                log_message "::error::FAIL: Kernel execution failed with error"
-                # Try to get logs before exiting
-                log_message "::group::Error Logs"
-                kaggle kernels logs "$kernel_name" 2>&1 || echo "Failed to retrieve logs"
-                log_message "::endgroup::"
+                log_message "::error::FAIL: Test(s) failed."
                 exit 1
             elif [[ "$status" == *"cancel"* ]]; then
-                log_message "::error::FAIL: Kernel execution was canceled"
+                log_message "::error::FAIL: Test(s) failed. The Kaggle kernel has been canceled."
                 exit 1
             elif [[ "$status" == *"complete"* ]]; then
-                log_message "SUCCESS: Kernel execution completed successfully!"
-                exit 0
-            elif [[ "$status" == *"running"* ]]; then
-                log_message "Kernel is still running..."
-            else
-                log_message "WARNING: Unexpected status: '$status'"
-            fi
-        
-            # Update elapsed time and check timeout
-            TIME_ELAPSED=$((TIME_ELAPSED + CHECK_INTERVAL))
-            REMAINING_TIME=$((MAX_WAIT_TIME - TIME_ELAPSED))
-            
-            if [ $REMAINING_TIME -le 0 ]; then
-                log_message "::error::FAIL: Timeout reached after ${MAX_WAIT_TIME} seconds"
+                log_message "SUCCESS: Kaggle Integration Tests completed successfully!"
                 break
+            else
+                log_message "Kernel is still running. Rechecking in 3 seconds..."
+                sleep 3
             fi
-        
-            log_message "Next check in ${CHECK_INTERVAL} seconds (${REMAINING_TIME} seconds remaining)..."
-            sleep $CHECK_INTERVAL
         done
-        
-        # Handle timeout
-        if [ $TIME_ELAPSED -ge $MAX_WAIT_TIME ]; then
-            log_message "::error::FAIL: Execution timed out after ${MAX_WAIT_TIME} seconds"
-            log_message "::group::Final Status and Logs"
-            kaggle kernels status "$kernel_name" 2>&1 || echo "Failed to get final status"
-            echo "---"
-            kaggle kernels logs "$kernel_name" 2>&1 || echo "Failed to retrieve logs"
+
+        if [ $? -ne 0 ]; then
+            log_message "::group::Full log"
+            log_message "Fetching full kernel output log for '$kernel_name':"
+            kaggle kernels output "$kernel_name" 2>&1
             log_message "::endgroup::"
             exit 1
         fi
-   

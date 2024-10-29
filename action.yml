@@ -219,7 +219,7 @@ runs:
         
         username="${{ inputs.username }}"
         raw_kernel_name="${{ inputs.title }}"
-        kernel_slug=$(echo "$raw_kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        kernel_slug=$(echo "$raw_kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')
         kernel_name="${username}/${kernel_slug}"
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
@@ -228,7 +228,27 @@ runs:
         log_message() {
             echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
         }
-
+        while true; do
+            log_message "Retrieving kernel status..."
+            status=$(kaggle kernels status "$kernel_name" 2>&1)
+    
+            if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
+                log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
+                exit 1
+            elif [[ "$status" == *"error"* ]]; then
+                log_message "::error::FAIL: Test(s) failed."
+                exit 1
+            elif [[ "$status" == *"cancel"* ]]; then
+                log_message "::error::FAIL: Test(s) failed. The Kaggle kernel has been canceled."
+                exit 1
+            elif [[ "$status" == *"complete"* ]]; then
+                log_message "SUCCESS: Kaggle Integration Tests completed successfully!"
+                break
+            else
+                log_message "Kernel is still running. Rechecking in 3 seconds..."
+                sleep 3
+            fi
+        done
 
         if [ $? -ne 0 ]; then
             log_message "::group::Full log"

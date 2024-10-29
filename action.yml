@@ -153,13 +153,15 @@ runs:
     - name: Setup test
       shell: bash
       run: |
-        echo "Navigating to the action path: '${{ github.action_path }}'"
-        cd "${{ github.action_path }}"
+        action_path=$(realpath "${{ github.action_path }}")
         
-        echo "Initializing Kaggle kernel metadata..."
-        kaggle kernels init -p "${{ github.action_path }}"
+        echo "Navigating to the action path: '$action_path'"
+        cd "$action_path"
         
-        json_path="${{ github.action_path }}/kernel-metadata.json"
+        echo "Initializing Kaggle kernel metadata at path: '$action_path'"
+        kaggle kernels init -p "$action_path"
+        
+        json_path="$action_path/kernel-metadata.json"
         echo "Kernel metadata template created at: $json_path"
         
         echo "Loading current metadata for processing..."
@@ -183,7 +185,7 @@ runs:
         echo "$metadata" | jq '.' > "$json_path"
         
         echo "Pushing Kaggle kernel with updated metadata..."
-        kaggle kernels push -p "${{ github.action_path }}"
+        kaggle kernels push -p "$action_path"
         
         echo "Kaggle kernel setup and push completed successfully."
     

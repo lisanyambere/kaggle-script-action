@@ -177,8 +177,8 @@ runs:
                                            .code_file = $code_file |
                                            .language = "python" |
                                            .kernel_type = "notebook" |
-                                           .enable_gpu = ($enable_gpu == "enable") |
-                                           .enable_internet = ($enable_internet == "enable")')
+                                           .enable_gpu = true |
+                                           .enable_internet = true')
         
         echo "Saving updated metadata back to $json_path"
         echo "$metadata" | jq '.' > "$json_path"

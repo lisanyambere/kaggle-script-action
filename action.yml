@@ -186,7 +186,7 @@ runs:
         
         log_message "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \
-                                         --arg id "kernel_slug" \
+                                         --arg id "${{ inputs.username }}/$kernel_slug" \
                                          --arg code_file "$OUTPUT_NOTEBOOK" \
                                          --argjson enable_gpu "${{ inputs.enable_gpu }}" \
                                          --argjson enable_internet "${{ inputs.enable_internet }}" \

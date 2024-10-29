@@ -195,7 +195,7 @@ runs:
     - name: Check status
       shell: bash
       run: |
-
+        
         # Set default timeout and check interval values
         MAX_WAIT_TIME=3600  # 1 hour timeout
         CHECK_INTERVAL=10   # Check every 10 seconds
@@ -238,7 +238,7 @@ runs:
             if [ -z "${KAGGLE_KEY}" ]; then
                 echo "::error::Kaggle API key not properly configured. Please check KAGGLE_KEY"
                 return 1
-            }
+            fi
         
             # Attempt to get kernel status with error capture
             local status_output
@@ -281,7 +281,7 @@ runs:
                 sleep $CHECK_INTERVAL
                 TIME_ELAPSED=$((TIME_ELAPSED + CHECK_INTERVAL))
                 continue
-            }
+            fi
             
             log_message "Current kernel status: $status"
         

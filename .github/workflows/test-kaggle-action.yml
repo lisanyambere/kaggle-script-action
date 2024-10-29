@@ -20,5 +20,6 @@ jobs:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
           title: "My Test Kernel"
-          custom_script: "print('Now what')"
-          enable_internet: "true"
+          custom_script: "print('Success')"
+          enable_internet: true
+          enable_gpu: false

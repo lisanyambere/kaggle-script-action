@@ -23,6 +23,10 @@ inputs:
     description: Whether or not kernel should run on a GPU.
     required: false
     default: "false"
+  nable_gpu:
+    description: Whether or not kernel should run on a TPU.
+    required: false
+    default: "false"
   enable_internet:
     description: Whether or not kernel should be able to access the internet.
     required: false
@@ -184,15 +188,19 @@ runs:
         
         log_message "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \
-                                         --arg code_file "$OUTPUT_NOTEBOOK" \
-                                         '. |
-                                           .id = (.id | split("/")[0]) + "/" + $title |
-                                           .title = $title |
-                                           .code_file = $code_file |
-                                           .language = "python" |
-                                           .kernel_type = "notebook" |
-                                           .enable_gpu = true |
-                                           .enable_internet = true')
+                                 --arg code_file "$OUTPUT_NOTEBOOK" \
+                                 --argjson enable_gpu "${{ inputs.enable_gpu }}" \
+                                 --argjson enable_internet "${{ inputs.enable_internet }}" \
+                                 --argjson enable_internet "${{ inputs.enable_tpu }}" \
+                                 '. |
+                                   .id = (.id | split("/")[0]) + "/" + $title |
+                                   .title = $title |
+                                   .code_file = $code_file |
+                                   .language = "python" |
+                                   .kernel_type = "notebook" |
+                                   .enable_gpu = $enable_gpu |
+                                   .enable_internet = $enable_internet' |
+                                   .enable_tpu = $enable_tpu')
         
         echo "Saving updated metadata back to $json_path"
         echo "$metadata" | jq '.' > "$json_path"

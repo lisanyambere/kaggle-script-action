@@ -182,7 +182,7 @@ runs:
         metadata=$(jq -r '. | tojson' < "$json_path")
         
         kernel_name="${{ inputs.title }}"  
-        kernel_slug=$(echo "$kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        kernel_slug=$(echo "$kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')
         
         log_message "Updating metadata with specified inputs..."
         metadata=$(echo "$metadata" | jq --arg title "${{ inputs.title }}" \

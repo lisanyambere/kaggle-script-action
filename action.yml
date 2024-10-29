@@ -66,15 +66,15 @@ runs:
     - name: Set up Notebook Kernel
       shell: bash
       run: |
-        OUTPUT_NOTEBOOK="project_setup.ipynb"
+        OUTPUT_NOTEBOOK="${{ github.workspace }}/project_setup.ipynb"  # Define full path for OUTPUT_NOTEBOOK
         REPO_URL=$(git config --get remote.origin.url)
         REPO_NAME=$(basename "$REPO_URL" .git)
-        BRANCH_NAME==$(git rev-parse --abbrev-ref HEAD)
+        BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
         CUSTOM_SCRIPT="${{ inputs.custom_script }}"
-
+        
         # Read dependencies from requirements.txt for pip install
         dependencies="!cd /kaggle/working/$REPO_NAME && pip install -r requirements.txt"
-
+        
         # Create the Jupyter notebook JSON structure with three cells
         cat <<EOM > "$OUTPUT_NOTEBOOK"
         {
@@ -122,13 +122,13 @@ runs:
           "nbformat_minor": 2
         }
         EOM
-
+        
         echo "Notebook '$OUTPUT_NOTEBOOK' created with Git clone, pip install, and custom script cells."
 
     - name: Setup test
       shell: bash
       run: |
-        # Set location to the action path
+        # Set location to the action path to push ot kernel
         cd '${{ github.action_path }}'
         
         # Initialize Kaggle kernel
@@ -138,9 +138,9 @@ runs:
         json_path='${{ github.action_path }}/kernel-metadata.json'
         metadata=$(jq -r '. | tojson' < "$json_path")
         
-        # Update metadata
+        # Update metadata with evaluated notebook path
         metadata=$(echo "$metadata" | jq --arg title '${{ inputs.title }}' \
-                                        --arg code_file '${{ github.workspace }}/$OUTPUT_NOTEBOOK' \
+                                        --arg code_file "$OUTPUT_NOTEBOOK" \
                                         --arg enable_gpu '${{ inputs.enable_gpu }}' \
                                         --arg enable_internet '${{ inputs.enable_internet }}' \
                                         '. | 
@@ -153,7 +153,7 @@ runs:
                                           .enable_internet = ($enable_internet == "enable")')
         
         # Save updated metadata
-        echo "$metadata" > "$json_path"
+        echo "$metadata" | jq '.' > "$json_path"
         
         # Push Kaggle kernel
         kaggle kernels push

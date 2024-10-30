@@ -141,7 +141,7 @@ runs:
               "metadata": {},
               "outputs": [],
               "source": [
-                "$CUSTOM_SCRIPT"
+                "!cd /kaggle/working/$REPO_NAME && $CUSTOM_SCRIPT"
               ]
             }
           ],

@@ -26,6 +26,7 @@ Add `USERNAME` and `TOKEN` to Github Actions Secrets as `KAGGLE_USERNAME` and `K
 - **`username`** (required): Kaggle username.
 - **`key`** (required): Kaggle API token.
 - **`title`** (required): Title of execution run.
+- **`working_subdir`** (optional): Subdirectory inside `/kaggle/working/REPO_NAME` where dependencies are installed and the custom script is run. Default" `""` e.g `working_subdir: "src"` will execute commands inside`/kaggle/working/REPO_NAME/src`
 - **`custom_script`** (required): Custom script content to execute within the notebook. Default: `print('Success')`.
 - **`enable_gpu`** (optional): Enable GPU on the Kaggle kernel. Default: `false`.
 - **`enable_tpu`** (optional): Enable TPU on the Kaggle kernel. Default: `false`.

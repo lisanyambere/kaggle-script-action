@@ -1,4 +1,4 @@
-name: Test Kaggle Action
+name: Test Kaggle Script Action
 
 on: [pull_request]
 
@@ -10,13 +10,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Run Kaggle Action
+      - name: Test Kaggle Script Action
         uses: ./
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
-          title: "Kernel Test v2"
-          custom_script: "pytest tests/test.py"
+          title: "Test Kaggle Script Action"
+          custom_script: "python test.py --url "https://jsonplaceholder.typicode.com/posts/1""
+          working_subdir: "tests"
           enable_internet: true
           enable_gpu: false
           enable_tpu: false

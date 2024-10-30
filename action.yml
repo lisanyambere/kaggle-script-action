@@ -41,6 +41,10 @@ inputs:
     description: A list of kernel data sources that kernel should use. Each dataset is specified as {username}/{kernel-slug}.
     required: false
     default: ""
+  sleep_time:
+    description: Duration (in seconds) before checking the status of kernel execution completion
+    required: false
+    default: 15
 
 outputs:
   automatic_releases_tag:
@@ -236,17 +240,17 @@ runs:
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
                 exit 1
             elif [[ "$status" == *"error"* ]]; then
-                log_message "::error::FAIL: Test(s) failed."
+                log_message "::error::FAIL: Script(s) execution failed."
                 exit 1
             elif [[ "$status" == *"cancel"* ]]; then
-                log_message "::error::FAIL: Test(s) failed. The Kaggle kernel has been canceled."
+                log_message "::error::FAIL: Script(s) failed. The Kaggle kernel has been canceled."
                 exit 1
             elif [[ "$status" == *"complete"* ]]; then
-                log_message "SUCCESS: Kaggle Integration Tests completed successfully!"
+                log_message "SUCCESS: Script execution completed successfully!"
                 break
             else
-                log_message "Kernel is still running. Rechecking in 3 seconds..."
-                sleep 3
+                log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
+                sleep "${{ inputs.sleep_time }}"
             fi
         done
 

@@ -24,3 +24,4 @@ jobs:
           enable_internet: true
           enable_gpu: false
           enable_tpu: false
+          sleep_time: 20

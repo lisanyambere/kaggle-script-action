@@ -254,6 +254,7 @@ runs:
         done
 
         log_file="./$kernel_slug.log"
+
         if [ $? -ne 0 ]; then
             log_message "::group::Full log"
             log_message "Fetching full kernel output log for '$kernel_name':"
@@ -263,8 +264,10 @@ runs:
             if [ -f "$log_file" ]; then
                 log_message "Displaying only the 'data' fields from the log:"
                 
-                # Use jq to extract and display only the 'data' fields
-                jq -r '.[].data' "$log_file"
+                # Extract each 'data' field and pass it to log_message
+                while IFS= read -r line; do
+                    log_message "$line"
+                done < <(jq -r '.[].data' "$log_file")
             else
                 log_message "Log file '$log_file' not found."
             fi

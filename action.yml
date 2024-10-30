@@ -220,7 +220,6 @@ runs:
     - name: Check status
       shell: bash
       run: |
-        
         username="${{ inputs.username }}"
         raw_kernel_name="${{ inputs.title }}"
         kernel_slug=$(echo "$raw_kernel_name" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')
@@ -254,11 +253,12 @@ runs:
             fi
         done
 
-        if [ $? -ne 0 ]; then
-            log_message "::group::Full log"
-            log_message "Fetching full kernel output log for '$kernel_name':"
-            kaggle kernels output "$kernel_name" 2>&1
-            log_message "::endgroup::"
+        log_message "::group::Full log"
+        log_message "Fetching full kernel output log for '$kernel_name':"
+        kaggle kernels output "$kernel_name" 2>&1
+        log_message "::endgroup::"
+    
+        if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
             exit 1
         fi
 

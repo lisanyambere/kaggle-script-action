@@ -260,11 +260,8 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            log_message "Displaying only the 'data' fields from the log:"
-            
-            # Extract each 'data' field and pass it to log_message
             while IFS= read -r line; do
-                log_message "$line"
+                [[ -n "$line" ]] && log_message "$line"
             done < <(jq -r '.[].data' "$log_file")
         else
             log_message "Log file '$log_file' not found."

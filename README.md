@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Execute Kaggle Script Action
-        uses: KevKibe/kaggle-script-action@v1.0.1
+        uses: KevKibe/kaggle-script-action@latest
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}

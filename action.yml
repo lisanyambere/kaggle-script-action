@@ -257,8 +257,18 @@ runs:
         if [ $? -ne 0 ]; then
             log_message "::group::Full log"
             log_message "Fetching full kernel output log for '$kernel_name':"
-            kaggle kernels output "$kernel_name" 2>&1
-            cat "$log_file"
+            kaggle kernels output "$kernel_name" -p . 2>&1
+        
+            # Check if the log file exists
+            if [ -f "$log_file" ]; then
+                log_message "Displaying only the 'data' fields from the log:"
+                
+                # Use jq to extract and display only the 'data' fields
+                jq -r '.[].data' "$log_file"
+            else
+                log_message "Log file '$log_file' not found."
+            fi
+        
             log_message "::endgroup::"
             exit 1
         fi

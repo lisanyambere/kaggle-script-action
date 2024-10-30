@@ -255,24 +255,24 @@ runs:
 
         log_file="./$kernel_slug.log"
 
-        if [ $? -ne 0 ]; then
-            log_message "::group::Full log"
-            log_message "Fetching full kernel output log for '$kernel_name':"
-            kaggle kernels output "$kernel_name" -p . 2>&1
+        log_message "::group::Full log"
+        log_message "Fetching full kernel output log for '$kernel_name':"
+        kaggle kernels output "$kernel_name" -p . 2>&1
         
-            # Check if the log file exists
-            if [ -f "$log_file" ]; then
-                log_message "Displaying only the 'data' fields from the log:"
-                
-                # Extract each 'data' field and pass it to log_message
-                while IFS= read -r line; do
-                    log_message "$line"
-                done < <(jq -r '.[].data' "$log_file")
-            else
-                log_message "Log file '$log_file' not found."
-            fi
+        if [ -f "$log_file" ]; then
+            log_message "Displaying only the 'data' fields from the log:"
+            
+            # Extract each 'data' field and pass it to log_message
+            while IFS= read -r line; do
+                log_message "$line"
+            done < <(jq -r '.[].data' "$log_file")
+        else
+            log_message "Log file '$log_file' not found."
+        fi
         
-            log_message "::endgroup::"
+        log_message "::endgroup::"
+        
+        if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
             exit 1
         fi
 

@@ -40,25 +40,26 @@ Add `USERNAME` and `TOKEN` to Github Actions Secrets as `KAGGLE_USERNAME` and `K
 
 ## Example Usage
 ```yaml
-name: Run Tests
+name: Run Tests on Pull Request
 
-on: [pull_request]
+on:
+  pull_request:
 
 jobs:
   test_kaggle_action:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Run Kaggle Action
+      - name: Execute Kaggle Script Action
         uses: KevKibe/kaggle-script-action@v1.0.0
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
-          title: "Kernel Test v2"
-          custom_script: "pytest tests/test.py"
+          title: "Run Unit Tests"
+          custom_script: "pytest test.py"
           enable_internet: true
           enable_gpu: false
           enable_tpu: false

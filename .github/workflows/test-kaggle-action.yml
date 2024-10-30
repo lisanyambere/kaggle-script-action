@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
           title: "Kernel Test v2"
-          custom_script: "!pytest test.py "
+          custom_script: "!pytest tests/test.py "
           enable_internet: true
           enable_gpu: false
           enable_tpu: false

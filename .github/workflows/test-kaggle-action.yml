@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
           title: "Kernel Test v2"
-          custom_script: "print('Success')"
+          custom_script: "!pytest test.py && !python fetch_data.py --url "https://jsonplaceholder.typicode.com/posts/1""
           enable_internet: true
           enable_gpu: false
           enable_tpu: false

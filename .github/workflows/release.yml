@@ -2,7 +2,7 @@ name: Release on Push to Main
 
 on:
   push:
-    branches: [main]
+    branches: [fix-release-workflows]
 
 permissions:
   contents: write

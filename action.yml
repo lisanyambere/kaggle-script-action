@@ -16,7 +16,7 @@ inputs:
   custom_script:
     description: Custom script content to run in the notebook
     required: true
-    default: "print('Now what')"
+    default: "print('Success')"
   enable_gpu:
     description: Whether or not kernel should run on a GPU.
     required: false

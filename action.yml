@@ -258,6 +258,15 @@ runs:
         kaggle kernels output "$kernel_name" 2>&1
         log_message "::endgroup::"
     
+        log_file="./$kernel_slug.log"
+        if [ -f "$log_file" ]; then
+            log_message "::group::Kernel Execution Log Contents"
+            cat "$log_file"
+            log_message "::endgroup::"
+        else
+            log_message "Warning: Log file '$log_file' not found."
+        fi
+    
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
             exit 1
         fi

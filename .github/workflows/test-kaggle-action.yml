@@ -1,10 +1,6 @@
 name: Test Kaggle Action
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+on: [pull_request]
 
 jobs:
   test_kaggle_action:

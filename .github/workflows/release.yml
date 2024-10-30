@@ -1,13 +1,39 @@
-name: release
+name: Release on Push to Main
+
 on:
   push:
     branches: [main]
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: marvinpinto/action-automatic-releases@latest
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get install -y jq
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          notes=$(gh release view --repo ${{ github.repository }} latest --json body --jq .body || echo "New release triggered by push to main branch.")
+          echo "::set-output name=notes::$notes"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: latest
+          tag_name: latest
+          name: "Release $(date +'%Y-%m-%d')"
+          body: ${{ steps.release_notes.outputs.notes }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -45,6 +45,10 @@ inputs:
     description: Duration (in seconds) before checking the status of kernel execution completion
     required: false
     default: 15
+  working_subdir:
+    description: Subdirectory inside /kaggle/working/$REPO_NAME where dependencies are installed and the custom script is run
+    required: false
+    default: ""
 
 outputs:
   automatic_releases_tag:
@@ -110,9 +114,13 @@ runs:
         log_message "Cloning repository URL: $REPO_URL on branch: $BRANCH_NAME"
         
         CUSTOM_SCRIPT="${{ inputs.custom_script }}"
-        log_message "Adding custom script to notebook: $CUSTOM_SCRIPT"
+      
+        WORKING_SUBDIR="${{ inputs.working_subdir }}"
+        TARGET_DIR="/kaggle/working/$REPO_NAME/$WORKING_SUBDIR"
+        dependencies="!cd $TARGET_DIR/$REPO_NAME && pip install -r requirements.txt"
         
-        dependencies="!cd /kaggle/working/$REPO_NAME && pip install -r requirements.txt"
+        log_message "Adding dependency installation script to notebook: $dependencies"
+        log_message "Adding custom script to notebook: $CUSTOM_SCRIPT"
         
         cat <<EOM > "$OUTPUT_NOTEBOOK"
         {
@@ -141,7 +149,7 @@ runs:
               "metadata": {},
               "outputs": [],
               "source": [
-                "!cd /kaggle/working/$REPO_NAME && $CUSTOM_SCRIPT"
+                "!cd $TARGET_DIR && $CUSTOM_SCRIPT"
               ]
             }
           ],

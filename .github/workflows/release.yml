@@ -32,11 +32,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Release Date
+        id: release_date
+        run: echo "RELEASE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: latest
-          name: "Release $(date +'%Y-%m-%d')"
-          body: ${{ steps.release_notes.outputs.notes }}
+          name: "Release ${{ env.RELEASE_DATE }}"
+          body: "New release triggered by push to main branch."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

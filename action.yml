@@ -1,4 +1,4 @@
-name: Run Script Kaggle
+name: Kaggle Script Action
 author: Kevin Kibe
 
 description: Run any Python/R on Kaggle as tests/code execution.

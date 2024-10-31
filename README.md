@@ -43,10 +43,11 @@ Add `USERNAME` and `TOKEN` to Github Actions Secrets as `KAGGLE_USERNAME` and `K
 ## Example Usage(Running unittests)
 
 ```yaml
-name: Run Tests on Pull Request
-
+name: Run Tests on Push
 on:
-  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   test_kaggle_action:

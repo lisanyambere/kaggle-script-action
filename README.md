@@ -5,7 +5,7 @@
 It pulls the current branch, installs dependencies from the working subdirectory `requirements.txt` by default, and supports running Python scripts with options like GPU/TPU, internet access, and custom dataset dependencies.
 
 ## Key Features
-- **Automated Kernel Execution**: Run Python scripts on Kaggle kernels from GitHub Actions, with options for enabling GPU, TPU, and internet.
+- **Automated Kernel Execution**: Run Python scripts on Kaggle kernels from GitHub Actions, with options for enabling  free GPU, TPU, and internet.
 - **Flexible Configuration**: Specify kernel parameters like title, custom script, data sources, and sleep intervals for status checks.
 - **Dynamic Script Injection**: Accepts a custom script input that is added directly to the Kaggle notebook, making it versatile for various tests and jobs.
 - **CI/CD Integration**: Incorporate machine learning workflows seamlessly into your CI/CD pipeline, with GitHub Actions monitoring the kernel execution status and fetching output logs.

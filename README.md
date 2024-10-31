@@ -5,7 +5,7 @@
 It pulls the current branch, installs dependencies from the working subdirectory `requirements.txt` by default, and supports running Python scripts with options like GPU/TPU, internet access, and custom dataset dependencies.
 
 ## Key Features
-- **Automated Kernel Execution**: Run Python scripts on Kaggle kernels from GitHub Actions, with options for enabling  free GPU, TPU, and internet.
+- **Automated Kernel Execution**: Run Python scripts on Kaggle kernels from GitHub Actions, with options for enabling free GPU, TPU, and internet.
 - **Flexible Configuration**: Specify kernel parameters like title, custom script, data sources, and sleep intervals for status checks.
 - **Dynamic Script Injection**: Accepts a custom script input that is added directly to the Kaggle notebook, making it versatile for various tests and jobs.
 - **CI/CD Integration**: Incorporate machine learning workflows seamlessly into your CI/CD pipeline, with GitHub Actions monitoring the kernel execution status and fetching output logs.
@@ -69,6 +69,42 @@ jobs:
           sleep_time: 10
 ```
 ## Example Usage(Training a Bert Model)
+```yaml
+name: Train Bert Model on Pull Request
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test_kaggle_action:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Run Bert Model Training
+        uses: KevKibe/kaggle-script-action@v1.0.0
+        with:
+          username: ${{ secrets.KAGGLE_USERNAME }}
+          key: ${{ secrets.KAGGLE_KEY }}
+          title: "Run Bert Model Training"
+          custom_script: "python train.py --model-name bert-base-uncased \
+                                        --train-file data/train.csv \
+                                        --validation-file data/val.csv \
+                                        --output-dir models/bert-text-classifier \
+                                        --batch-size 16 \
+                                        --learning-rate 3e-5 \
+                                        --num-epochs 3 \
+                                        --max-seq-length 128"
+          enable_internet: true
+          enable_gpu: true
+          enable_tpu: false
+          sleep_time: 60
+```
+
 ```python
 import argparse
 from transformers import Trainer, TrainingArguments, AutoModelForSequenceClassification, AutoTokenizer
@@ -122,41 +158,6 @@ if __name__ == "__main__":
     main(args)
 ```
 
-```yaml
-name: Train Bert Model on Pull Request
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  test_kaggle_action:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Run Bert Model Training
-        uses: KevKibe/kaggle-script-action@v1.0.0
-        with:
-          username: ${{ secrets.KAGGLE_USERNAME }}
-          key: ${{ secrets.KAGGLE_KEY }}
-          title: "Run Bert Model Training"
-          custom_script: "python train.py --model-name bert-base-uncased \
-                                        --train-file data/train.csv \
-                                        --validation-file data/val.csv \
-                                        --output-dir models/bert-text-classifier \
-                                        --batch-size 16 \
-                                        --learning-rate 3e-5 \
-                                        --num-epochs 3 \
-                                        --max-seq-length 128"
-          enable_internet: true
-          enable_gpu: true
-          enable_tpu: false
-          sleep_time: 60
-```
 
 
 **Note**: To use this action, you must have a Kaggle API token with the appropriate permissions for kernels and datasets.

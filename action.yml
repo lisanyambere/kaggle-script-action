@@ -14,9 +14,10 @@ inputs:
     description: The title of the kernel
     required: true
   custom_script:
-    description: Custom script content to run in the notebook
+    description: "Custom script content to run in the notebook"
     required: true
-    default: "print('Success')"
+    default: |
+      print('Success')
   enable_gpu:
     description: Whether or not kernel should run on a GPU.
     required: false
@@ -114,10 +115,11 @@ runs:
         log_message "Cloning repository URL: $REPO_URL on branch: $BRANCH_NAME"
         
         CUSTOM_SCRIPT="${{ inputs.custom_script }}"
+        escaped_custom_script=$(echo "$CUSTOM_SCRIPT" | awk '{printf "%s\\n", $0}')
       
         WORKING_SUBDIR="${{ inputs.working_subdir }}"
-        TARGET_DIR="/kaggle/working/$REPO_NAME/$WORKING_SUBDIR"
-        dependencies="!cd $TARGET_DIR/$REPO_NAME && pip install -r requirements.txt"
+        TARGET_DIR="/kaggle/working/$REPO_NAME${WORKING_SUBDIR:+/$WORKING_SUBDIR}"
+        dependencies="!cd $TARGET_DIR && pip install -r requirements.txt"
         
         log_message "Adding dependency installation script to notebook: $dependencies"
         log_message "Adding custom script to notebook: $CUSTOM_SCRIPT"
@@ -149,7 +151,7 @@ runs:
               "metadata": {},
               "outputs": [],
               "source": [
-                "!cd $TARGET_DIR && $CUSTOM_SCRIPT"
+                "!cd $TARGET_DIR && $escaped_custom_script"
               ]
             }
           ],

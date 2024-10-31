@@ -144,15 +144,14 @@ jobs:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
           title: "Run Bert Model Training"
-          custom_script: |
-            python train.py --model-name bert-base-uncased \
+          custom_script: "python train.py --model-name bert-base-uncased \
                                         --train-file data/train.csv \
                                         --validation-file data/val.csv \
                                         --output-dir models/bert-text-classifier \
                                         --batch-size 16 \
                                         --learning-rate 3e-5 \
                                         --num-epochs 3 \
-                                        --max-seq-length 128
+                                        --max-seq-length 128"
           enable_internet: true
           enable_gpu: true
           enable_tpu: false

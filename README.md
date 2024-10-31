@@ -70,7 +70,7 @@ jobs:
 ```
 ## Example Usage(Training a Bert Model)
 ```yaml
-name: Train Bert Model on Pull Request
+name: Train Bert Model on Push to Main
 
 on:
   push:

@@ -1,6 +1,6 @@
 # Kaggle Script Action
 
-**Kaggle Script Action** automates running custom scripts on Kaggle kernels, streamlining CI/CD for machine learning workflows in your GitHub repo. 
+**Kaggle Script Action** automates running model training and CI/CD workflows on Kaggle kernels for machine learning workflows in your GitHub repo. 
 <br>
 It pulls the current branch, installs dependencies from the working subdirectory `requirements.txt` by default, and supports running Python scripts with options like GPU/TPU, internet access, and custom dataset dependencies.
 

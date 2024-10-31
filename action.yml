@@ -1,7 +1,7 @@
 name: Kaggle Script Action
 author: Kevin Kibe
 
-description: Run Python scripts on Kaggle kernels with free GPU/TPU for CI/CD in ML workflows.
+description: Run model training and CI/CD workflows on Kaggle kernels with free GPU/TPU resources.
 
 inputs:
   username:

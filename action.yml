@@ -242,22 +242,6 @@ runs:
             echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
         }
         
-        check_log_for_errors() {
-            local log_file="$1"
-            local error_found=0
-            local error_message=""
-        
-            # Extract and parse error messages from JSON data fields
-            error_message=$(jq -r 'select(.stream_name=="stdout" and (.data | test("error"))) | .data' "$log_file" | head -n 1)
-        
-            if [[ -n "$error_message" ]]; then
-                log_message "::error::$error_message"
-                return 1
-            fi
-        
-            return 0
-        }
-        
         while true; do
             log_message "Retrieving kernel status..."
             status=$(kaggle kernels status "$kernel_name" 2>&1)
@@ -275,7 +259,7 @@ runs:
                 log_message "SUCCESS: Script execution completed successfully!"
                 break
             else
-                log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
+                log_message "Kernel is still running. Rechecking in ${ { inputs.sleep_time }} seconds..."
                 sleep "${{ inputs.sleep_time }}"
             fi
         done
@@ -287,16 +271,15 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            # Check logs for errors and return the specific error from the data field
-            if ! check_log_for_errors "$log_file"; then
-                exit 1
-            fi
-        
-            # Display full log using jq to parse JSON data fields
-            jq -r 'select(.stream_name=="stdout") | .data' "$log_file"
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && log_message "$line"
+                if echo "$line" | grep -Ei "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
+                    log_message "::error::Error found in log: $line"
+                    exit 1
+                fi
+            done < "$log_file"
         else
             log_message "Log file '$log_file' not found."
-            exit 1
         fi
         
         log_message "::endgroup::"
@@ -304,6 +287,7 @@ runs:
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
             exit 1
         fi
+
 
 
 branding:

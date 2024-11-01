@@ -237,14 +237,45 @@ runs:
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
         echo "Checking status for Kaggle kernel: '$kernel_name'"
-
+        
         log_message() {
             echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
         }
+        
+        check_log_for_errors() {
+            local log_file="$1"
+            local error_found=0
+        
+            # Define error patterns to search for
+            local error_patterns=(
+                "Error"
+                "ERROR"
+                "error"
+                "Traceback"
+                "Exception"
+                "404 Client Error"
+                "failed"
+                "FAIL"
+            )
+        
+            # Read the log file and check for error patterns
+            while IFS= read -r line; do
+                for pattern in "${error_patterns[@]}"; do
+                    if [[ "$line" == *"$pattern"* ]]; then
+                        log_message "::error::Error found in log: $line"
+                        error_found=1
+                        break
+                    fi
+                done
+            done < "$log_file"
+        
+            return $error_found
+        }
+        
         while true; do
             log_message "Retrieving kernel status..."
             status=$(kaggle kernels status "$kernel_name" 2>&1)
-    
+        
             if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
                 exit 1
@@ -262,19 +293,26 @@ runs:
                 sleep "${{ inputs.sleep_time }}"
             fi
         done
-
+        
         log_file="./$kernel_slug.log"
-
+        
         log_message "::group::Full log"
         log_message "Fetching full kernel output log for '$kernel_name':"
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
+            # Check logs for errors
+            if check_log_for_errors "$log_file"; then
+                log_message "::error::Errors found in the kernel log. Failing the workflow."
+                exit 1
+            fi
+        
             while IFS= read -r line; do
                 [[ -n "$line" ]] && log_message "$line"
             done < <(jq -r '.[].data' "$log_file")
         else
             log_message "Log file '$log_file' not found."
+            exit 1
         fi
         
         log_message "::endgroup::"

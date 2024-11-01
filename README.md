@@ -49,7 +49,7 @@ on:
   pull_request:
 
 jobs:
-  test_kaggle_action:
+  run_unit_tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -79,7 +79,7 @@ on:
       - main
 
 jobs:
-  test_kaggle_action:
+  run_model_training:
     runs-on: ubuntu-latest
 
     steps:

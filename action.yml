@@ -259,27 +259,30 @@ runs:
                 log_message "SUCCESS: Script execution completed successfully!"
                 break
             else
-                log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
+                log_message "Kernel is still running. Rechecking in ${ { inputs.sleep_time }} seconds..."
                 sleep "${{ inputs.sleep_time }}"
             fi
         done
         
         log_file="./$kernel_slug.log"
-
+        
         log_message "::group::Full log"
         log_message "Fetching full kernel output log for '$kernel_name':"
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            while IFS= read -r line; do
-                data_field=$(echo "$line" | jq -r '.data')
+            # Process the JSON array in the log file
+            jq -c '.[]' "$log_file" | while IFS= read -r entry; do
+                # Extract the 'data' field from each JSON object
+                data_field=$(echo "$entry" | jq -r '.data')
                 [[ -n "$data_field" ]] && log_message "$data_field"
                 
+                # Check for errors in the extracted data field
                 if echo "$data_field" | grep -Ei "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
                     log_message "::error::Error found in log: $data_field"
                     exit 1
                 fi
-            done < "$log_file"
+            done
         else
             log_message "Log file '$log_file' not found."
         fi
@@ -289,6 +292,7 @@ runs:
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
             exit 1
         fi
+
 
 
 

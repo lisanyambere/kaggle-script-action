@@ -259,7 +259,7 @@ runs:
                 log_message "SUCCESS: Script execution completed successfully!"
                 break
             else
-                log_message "Kernel is still running. Rechecking in ${ { inputs.sleep_time }} seconds..."
+                log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
                 sleep "${{ inputs.sleep_time }}"
             fi
         done

@@ -247,31 +247,10 @@ runs:
             local error_found=0
             local error_message=""
         
-            # Define error patterns to search for
-            local error_patterns=(
-                "Error"
-                "ERROR"
-                "error"
-                "Traceback"
-                "Exception"
-                "404 Client Error"
-                "failed"
-                "FAIL"
-            )
+            # Extract and parse error messages from JSON data fields
+            error_message=$(jq -r 'select(.stream_name=="stdout" and (.data | test("error"))) | .data' "$log_file" | head -n 1)
         
-            # Read the log file and check for error patterns
-            while IFS= read -r line; do
-                for pattern in "${error_patterns[@]}"; do
-                    if [[ "$line" == *"$pattern"* ]]; then
-                        error_found=1
-                        error_message+="$line\n"
-                    fi
-                done
-            done < "$log_file"
-        
-            if [[ $error_found -eq 1 ]]; then
-                # Trim the error message and remove leading/trailing whitespace
-                error_message=$(echo -e "$error_message" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [[ -n "$error_message" ]]; then
                 log_message "::error::$error_message"
                 return 1
             fi
@@ -308,15 +287,13 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            # Check logs for errors and return the actual error message
+            # Check logs for errors and return the specific error from the data field
             if ! check_log_for_errors "$log_file"; then
-                # If errors are found, the script will have already logged the specific error
                 exit 1
             fi
         
-            while IFS= read -r line; do
-                [[ -n "$line" ]] && log_message "$line"
-            done < <(jq -r '.[].data' "$log_file")
+            # Display full log using jq to parse JSON data fields
+            jq -r 'select(.stream_name=="stdout") | .data' "$log_file"
         else
             log_message "Log file '$log_file' not found."
             exit 1

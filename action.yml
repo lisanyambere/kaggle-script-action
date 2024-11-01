@@ -271,13 +271,10 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            # Process the JSON array in the log file
             jq -c '.[]' "$log_file" | while IFS= read -r entry; do
-                # Extract the 'data' field from each JSON object
                 data_field=$(echo "$entry" | jq -r '.data')
                 [[ -n "$data_field" ]] && log_message "$data_field"
                 
-                # Check for errors in the extracted data field
                 if echo "$data_field" | grep -Ei "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
                     log_message "::error::Error found in log: $data_field"
                     exit 1

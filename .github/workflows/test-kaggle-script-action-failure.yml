@@ -33,4 +33,4 @@ jobs:
           enable_gpu: true
           enable_tpu: false
           sleep_time: 10
-
+        continue-on-error: true

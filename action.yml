@@ -272,12 +272,18 @@ runs:
         if [ -f "$log_file" ]; then
             error_found=false
             while IFS= read -r line; do
-                [[ -n "$line" ]] && log_message "$line"
+                # Check if the line contains '.data' and log only those
+                if [[ "$line" == *".data"* ]]; then
+                    log_message "$line"
+                fi
+        
+                # Check for errors and log the error message if found
                 if [[ "$line" == *"error"* ]]; then
                     log_message "::error::Kernel Error: $line"
                     error_found=true
                 fi
             done < "$log_file"
+        
             if $error_found; then
                 log_message "::error::FAIL: Errors found in the log."
                 exit 1
@@ -287,6 +293,7 @@ runs:
         fi
         
         log_message "::endgroup::"
+
 
 branding:
   icon: upload

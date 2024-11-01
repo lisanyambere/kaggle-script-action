@@ -20,6 +20,7 @@ jobs:
           echo "KAGGLE_KEY=${KAGGLE_KEY}" >> $GITHUB_ENV
 
       - name: Test Kaggle Script Action Failure
+        id: kaggle_test
         uses: ./
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
@@ -27,10 +28,17 @@ jobs:
           title: "Test Kaggle Script Action Failure"
           custom_script: |
               python test.py --url "https://jsonplaceholder.typicode.com/nonexistent"
-
           working_subdir: "tests"
           enable_internet: true
           enable_gpu: true
           enable_tpu: false
           sleep_time: 10
         continue-on-error: true
+
+      - name: Verify Workflow Outcome
+        if: steps.kaggle_test.outcome == 'success'
+        run: exit 1
+
+      - name: Verify Workflow Outcome (Negative Case)
+        if: steps.kaggle_test.outcome == 'failure'
+        run: exit 0

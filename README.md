@@ -49,7 +49,7 @@ on:
   pull_request:
 
 jobs:
-  test_kaggle_action:
+  run_unit_tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Execute Kaggle Script Action
-        uses: KevKibe/kaggle-script-action@v1.0.1
+        uses: KevKibe/kaggle-script-action@v1.0.2
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
@@ -79,7 +79,7 @@ on:
       - main
 
 jobs:
-  test_kaggle_action:
+  run_model_training:
     runs-on: ubuntu-latest
 
     steps:
@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Bert Model Training
-        uses: KevKibe/kaggle-script-action@v1.0.1
+        uses: KevKibe/kaggle-script-action@v1.0.2
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}

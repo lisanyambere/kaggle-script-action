@@ -4,12 +4,20 @@ on:
   pull_request:
 
 jobs:
-  test_kaggle_action:
+  test_kaggle_script_action:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Set up Kaggle API credentials
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          echo "KAGGLE_USERNAME=${KAGGLE_USERNAME}" >> $GITHUB_ENV
+          echo "KAGGLE_KEY=${KAGGLE_KEY}" >> $GITHUB_ENV
 
       - name: Test Kaggle Script Action
         uses: ./

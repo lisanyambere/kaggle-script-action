@@ -1,10 +1,10 @@
-name: Test Kaggle Script Action
+name: Test Kaggle Script Action Failure
 
 on:
   pull_request:
 
 jobs:
-  test_kaggle_action:
+  test_kaggle_action_failure:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,16 +19,18 @@ jobs:
           echo "KAGGLE_USERNAME=${KAGGLE_USERNAME}" >> $GITHUB_ENV
           echo "KAGGLE_KEY=${KAGGLE_KEY}" >> $GITHUB_ENV
 
-      - name: Test Kaggle Script Action
+      - name: Test Kaggle Script Action Failure
         uses: ./
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
-          title: "Test Kaggle Script Action"
+          title: "Test Kaggle Script Action Failure"
           custom_script: |
-              python test.py --url "https://jsonplaceholder.typicode.com/posts/1"
+              python test.py --url "https://jsonplaceholder.typicode.com/nonexistent"
+
           working_subdir: "tests"
           enable_internet: true
           enable_gpu: true
           enable_tpu: false
           sleep_time: 10
+

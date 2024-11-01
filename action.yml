@@ -270,18 +270,23 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
+            error_found=false
             while IFS= read -r line; do
                 [[ -n "$line" ]] && log_message "$line"
-            done < <(jq -r '.[].data' "$log_file")
+                if [[ "$line" == *"error"* ]]; then
+                    log_message "::error::Kernel Error: $line"
+                    error_found=true
+                fi
+            done < "$log_file"
+            if $error_found; then
+                log_message "::error::FAIL: Errors found in the log."
+                exit 1
+            fi
         else
             log_message "Log file '$log_file' not found."
         fi
         
         log_message "::endgroup::"
-        
-        if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
-            exit 1
-        fi
 
 branding:
   icon: upload

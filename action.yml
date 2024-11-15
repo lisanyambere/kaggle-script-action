@@ -237,21 +237,23 @@ runs:
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
         echo "Checking status for Kaggle kernel: '$kernel_name'"
-        
+
         log_message() {
-            if ! [[ "$1" =~ ^"Receiving objects: "[0-9]+"%".*$ ]] && \
-               ! [[ "$1" =~ ^"remote: Counting objects: "[0-9]+"%".*$ ]] && \
-               ! [[ "$1" =~ ^"Resolving deltas: "[0-9]+"%".*$ ]] && \
-               ! [[ "$1" =~ ^"Output file downloaded to: ".*$ ]]; then
+            # Filter out Git progress messages and download notifications
+            # The ^[0-9]* at the start of each pattern matches optional line numbers
+            if ! [[ "$1" =~ ^[0-9]*"Receiving objects: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^[0-9]*"remote: Counting objects: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^[0-9]*"remote: Compressing objects: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^[0-9]*"Resolving deltas: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^[0-9]*"Output file downloaded to: ".*$ ]]; then
                 echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
             fi
         }
-    
-        
+
         while true; do
             log_message "Retrieving kernel status..."
             status=$(kaggle kernels status "$kernel_name" 2>&1)
-            
+
             if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
                 exit 1
@@ -269,29 +271,50 @@ runs:
                 sleep "${{ inputs.sleep_time }}"
             fi
         done
-        
+
         log_file="./$kernel_slug.log"
-        
+
         log_message "::group::Full log"
         log_message "Fetching full kernel output log for '$kernel_name':"
         kaggle kernels output "$kernel_name" -p . 2>&1
-        
+
         if [ -f "$log_file" ]; then
-            jq -c '.[]' "$log_file" | while IFS= read -r entry; do
-                data_field=$(echo "$entry" | jq -r '.data')
-                [[ -n "$data_field" ]] && log_message "$data_field"
-                
-                if echo "$data_field" | grep -Ei "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
-                    log_message "::error::Error found in log: $data_field"
-                    exit 1
+            # Store any errors found
+            errors_found=0
+
+            # Process the log file line by line without pipe
+            while IFS= read -r entry; do
+                # Skip empty lines
+                [ -z "$entry" ] && continue
+
+                # Extract data field safely
+                data_field=$(echo "$entry" | jq -r '.data // empty')
+
+                # Only process non-empty data fields and filter progress messages
+                if [ -n "$data_field" ] && \
+                   ! [[ "$data_field" =~ ^[0-9]*"Receiving objects: "[0-9]+"%".*$ ]] && \
+                   ! [[ "$data_field" =~ ^[0-9]*"remote: Counting objects: "[0-9]+"%".*$ ]] && \
+                   ! [[ "$data_field" =~ ^[0-9]*"remote: Compressing objects: "[0-9]+"%".*$ ]] && \
+                   ! [[ "$data_field" =~ ^[0-9]*"Resolving deltas: "[0-9]+"%".*$ ]] && \
+                   ! [[ "$data_field" =~ ^[0-9]*"Output file downloaded to: ".*$ ]]; then
+                    log_message "$data_field"
+
+                    # Check for errors
+                    if echo "$data_field" | grep -Eiq "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
+                        log_message "::error::Error found in log: $data_field"
+                        errors_found=1
+                    fi
                 fi
-            done
+            done < <(jq -c '.[]' "$log_file" 2>/dev/null)
+
+            # Exit with error if any were found
+            [ "$errors_found" -eq 1 ] && exit 1
         else
             log_message "Log file '$log_file' not found."
         fi
-        
+
         log_message "::endgroup::"
-        
+
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* || "$status" == *"failed"* ]]; then
             exit 1
         fi

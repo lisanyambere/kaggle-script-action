@@ -239,12 +239,19 @@ runs:
         echo "Checking status for Kaggle kernel: '$kernel_name'"
         
         log_message() {
-            echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+            if ! [[ "$1" =~ ^"Receiving objects: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^"remote: Counting objects: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^"Resolving deltas: "[0-9]+"%".*$ ]] && \
+               ! [[ "$1" =~ ^"Output file downloaded to: ".*$ ]]; then
+                echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+            fi
         }
+    
         
         while true; do
             log_message "Retrieving kernel status..."
-            status=$(kaggle kernels status "$kernel_name" 2>&1 | grep -v "Receiving objects" | grep -v "Counting objects" | grep -v "Output file downloaded to" | grep -v "Resolving deltas")
+            status=$(kaggle kernels status "$kernel_name" 2>&1)
+            
             if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
                 exit 1

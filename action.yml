@@ -244,7 +244,13 @@ runs:
 
         while true; do
             log_message "Retrieving kernel status..."
-            status=$(kaggle kernels status "$kernel_name" 2>&1 | grep -v "Receiving objects" | grep -v "Counting objects" | grep -v "Output file downloaded to:")
+
+            # Run kaggle status command and suppress progress output
+            temp_status=$(mktemp)
+            kaggle kernels status "$kernel_name" > "$temp_status" 2>&1
+
+            # Filter the output
+            status=$(grep -v -E "Receiving objects|Counting objects|Resolving deltas|Output file downloaded to:" "$temp_status")
 
             if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
@@ -259,16 +265,24 @@ runs:
                 log_message "SUCCESS: Script execution completed successfully!"
                 break
             else
-                log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
-                sleep "${{ inputs.sleep_time }}"
+                log_message "Kernel is still running. Rechecking in ${ { inputs.sleep_time } } seconds..."
+                sleep "${ { inputs.sleep_time } }"
             fi
+
+            # Clean up temporary file
+            rm -f "$temp_status"
         done
 
         log_file="./$kernel_slug.log"
 
         log_message "::group::Full log"
         log_message "Fetching full kernel output log for '$kernel_name':"
-        kaggle kernels output "$kernel_name" -p . 2>&1 | grep -v "Receiving objects" | grep -v "Counting objects" | grep -v "Output file downloaded to:"
+
+        # Fetch kernel output log and suppress progress output
+        temp_output=$(mktemp)
+        kaggle kernels output "$kernel_name" -p . > "$temp_output" 2>&1
+        filtered_output=$(grep -v -E "Receiving objects|Counting objects|Resolving deltas|Output file downloaded to:" "$temp_output")
+        echo "$filtered_output"
 
         if [ -f "$log_file" ]; then
             jq -c '.[]' "$log_file" | while IFS= read -r entry; do

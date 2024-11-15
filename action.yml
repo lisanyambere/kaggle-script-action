@@ -286,7 +286,7 @@ runs:
         
         log_message "::endgroup::"
         
-        if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* ]]; then
+        if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* || "$status" == *"failed"* ]]; then
             exit 1
         fi
 

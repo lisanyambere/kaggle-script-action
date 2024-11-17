@@ -226,7 +226,6 @@ runs:
         
         log_message "Kaggle kernel setup and push completed successfully."
     
-
     - name: Check status
       shell: bash
       run: |
@@ -271,7 +270,7 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            jq -c '.[]' "$log_file" | while IFS= read -r entry; do
+            tail -n 100 "$log_file" | jq -c '.[]' | while IFS= read -r entry; do
                 data_field=$(echo "$entry" | jq -r '.data')
                 [[ -n "$data_field" ]] && log_message "$data_field"
                 
@@ -289,7 +288,6 @@ runs:
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* || "$status" == *"failed"* ]]; then
             exit 1
         fi
-
 
 
 

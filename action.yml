@@ -226,7 +226,6 @@ runs:
         
         log_message "Kaggle kernel setup and push completed successfully."
     
-
     - name: Check status
       shell: bash
       run: |
@@ -237,21 +236,15 @@ runs:
         action_path="${{ github.action_path }}"
         action_path=$(realpath "${{ github.action_path }}")
         echo "Checking status for Kaggle kernel: '$kernel_name'"
-
+        
         log_message() {
             echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
         }
-
+        
         while true; do
             log_message "Retrieving kernel status..."
-
-            # Run kaggle status command and suppress progress output
-            temp_status=$(mktemp)
-            kaggle kernels status "$kernel_name" > "$temp_status" 2>&1
-
-            # Filter the output
-            status=$(grep -v -E "Receiving objects|Counting objects|Resolving deltas|Output file downloaded to:" "$temp_status")
-
+            status=$(kaggle kernels status "$kernel_name" 2>&1)
+        
             if [[ "$status" == *"403"* || "$status" == *"denied"* ]]; then
                 log_message "::error::Access denied or kernel not found. Check if the API key has permissions and if the kernel name is correct."
                 exit 1
@@ -268,27 +261,19 @@ runs:
                 log_message "Kernel is still running. Rechecking in "${{ inputs.sleep_time }}" seconds..."
                 sleep "${{ inputs.sleep_time }}"
             fi
-
-            # Clean up temporary file
-            rm -f "$temp_status"
         done
-
+        
         log_file="./$kernel_slug.log"
-
+        
         log_message "::group::Full log"
         log_message "Fetching full kernel output log for '$kernel_name':"
-
-        # Fetch kernel output log and suppress progress output
-        temp_output=$(mktemp)
-        kaggle kernels output "$kernel_name" -p . > "$temp_output" 2>&1
-        filtered_output=$(grep -v -E "Receiving objects|Counting objects|Resolving deltas|Output file downloaded to:" "$temp_output")
-        echo "$filtered_output"
-
+        kaggle kernels output "$kernel_name" -p . 2>&1
+        
         if [ -f "$log_file" ]; then
-            jq -c '.[]' "$log_file" | while IFS= read -r entry; do
+            tail -n 100 "$log_file" | jq -c '.[]' | while IFS= read -r entry; do
                 data_field=$(echo "$entry" | jq -r '.data')
                 [[ -n "$data_field" ]] && log_message "$data_field"
-
+                
                 if echo "$data_field" | grep -Ei "Error|Traceback|Exception|404 Client Error|failed|FAIL"; then
                     log_message "::error::Error found in log: $data_field"
                     exit 1
@@ -297,12 +282,13 @@ runs:
         else
             log_message "Log file '$log_file' not found."
         fi
-
+        
         log_message "::endgroup::"
-
+        
         if [[ "$status" == *"403"* || "$status" == *"denied"* || "$status" == *"error"* || "$status" == *"cancel"* || "$status" == *"failed"* ]]; then
             exit 1
         fi
+
 
 
 branding:

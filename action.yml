@@ -270,7 +270,7 @@ runs:
         kaggle kernels output "$kernel_name" -p . 2>&1
         
         if [ -f "$log_file" ]; then
-            tail -n 100 "$log_file" | jq -c '.[]' | while IFS= read -r entry; do
+            tail "$log_file" | jq -c '.[]' | while IFS= read -r entry; do
                 data_field=$(echo "$entry" | jq -r '.data')
                 [[ -n "$data_field" ]] && log_message "$data_field"
                 

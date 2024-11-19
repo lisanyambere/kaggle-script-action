@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Execute Kaggle Script Action
-        uses: KevKibe/kaggle-script-action@v1.0.4
+        uses: KevKibe/kaggle-script-action@v1.0.5
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}
@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Bert Model Training
-        uses: KevKibe/kaggle-script-action@v1.0.4
+        uses: KevKibe/kaggle-script-action@v1.0.5
         with:
           username: ${{ secrets.KAGGLE_USERNAME }}
           key: ${{ secrets.KAGGLE_KEY }}

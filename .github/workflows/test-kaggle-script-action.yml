@@ -2,6 +2,7 @@ name: Test Kaggle Script Action
 
 on:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test_kaggle_script_action:

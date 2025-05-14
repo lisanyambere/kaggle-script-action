@@ -213,7 +213,8 @@ runs:
                                            .kernel_type = "notebook" |
                                            .enable_gpu = $enable_gpu |
                                            .enable_internet = $enable_internet |
-                                           .enable_tpu = $enable_tpu')
+                                           .enable_tpu = $enable_tpu |
+                                           .is_private = false')
         
         echo "Saving updated metadata back to $json_path"
         echo "$metadata" | jq '.' > "$json_path"

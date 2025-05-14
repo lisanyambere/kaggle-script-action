@@ -1,0 +1,152 @@
+name: Kaggle Script Action
+description: Run model training and CI/CD workflows on Kaggle kernels with free GPU/TPU resources.
+author: Kevin Kibe
+
+inputs:
+  username:
+    description: Kaggle username
+    required: true
+  key:
+    description: Kaggle token (API key)
+    required: true
+  title:
+    description: Title of the Kaggle kernel
+    required: true
+  custom_script:
+    description: Custom script content to run in the notebook
+    required: false
+    default: |
+      print('Success')
+  enable_gpu:
+    description: Enable GPU in kernel
+    required: false
+    default: "false"
+  enable_tpu:
+    description: Enable TPU in kernel
+    required: false
+    default: "false"
+  enable_internet:
+    description: Enable internet access in kernel
+    required: false
+    default: "true"
+  dataset_sources:
+    description: Kaggle dataset sources (username/dataset-slug)
+    required: false
+    default: ""
+  competition_sources:
+    description: Kaggle competition sources
+    required: false
+    default: ""
+  kernel_sources:
+    description: Kaggle kernel data sources (username/kernel-slug)
+    required: false
+    default: ""
+  sleep_time:
+    description: Wait time in seconds before checking kernel status
+    required: false
+    default: "15"
+  working_subdir:
+    description: Subdirectory inside the repo to run scripts from
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install --upgrade kaggle jq
+
+    - name: Set up Kaggle API key
+      shell: bash
+      run: |
+        mkdir -p ~/.kaggle
+        echo "{\"username\":\"${{ inputs.username }}\",\"key\":\"${{ inputs.key }}\"}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+
+    - name: Create notebook
+      shell: bash
+      run: |
+        REPO_URL=$(git config --get remote.origin.url)
+        BRANCH_NAME="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
+        NOTEBOOK_PATH="${{ github.action_path }}/script.ipynb"
+        TARGET_DIR="/kaggle/working/$(basename "$REPO_URL" .git)${{ inputs.working_subdir:+/${{ inputs.working_subdir }}}"
+        CUSTOM_SCRIPT=$(echo "${{ inputs.custom_script }}" | awk '{printf "%s\\n", $0}')
+        cat > "$NOTEBOOK_PATH" <<EOF
+        {
+          "cells": [
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": ["!git clone --branch $BRANCH_NAME $REPO_URL"]
+            },
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": ["!cd $TARGET_DIR && pip install -r requirements.txt"]
+            },
+            {
+              "cell_type": "code",
+              "execution_count": null,
+              "metadata": {},
+              "outputs": [],
+              "source": ["!cd $TARGET_DIR && $CUSTOM_SCRIPT"]
+            }
+          ],
+          "metadata": {
+            "kernelspec": {
+              "display_name": "Python 3",
+              "language": "python",
+              "name": "python3"
+            }
+          },
+          "nbformat": 4,
+          "nbformat_minor": 2
+        }
+EOF
+
+    - name: Set up kernel metadata
+      shell: bash
+      run: |
+        cd "${{ github.action_path }}"
+        kaggle kernels init -p .
+        jq '.id = "${{ inputs.username }}/'"$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')"'" |
+            .title = "${{ inputs.title }}" |
+            .code_file = "script.ipynb" |
+            .language = "python" |
+            .kernel_type = "notebook" |
+            .enable_gpu = ('${{ inputs.enable_gpu }}' == "true") |
+            .enable_tpu = ('${{ inputs.enable_tpu }}' == "true") |
+            .enable_internet = ('${{ inputs.enable_internet }}' == "true") |
+            .is_private = false' kernel-metadata.json > tmp.json && mv tmp.json kernel-metadata.json
+
+    - name: Push to Kaggle
+      shell: bash
+      run: |
+        cd "${{ github.action_path }}"
+        kaggle kernels push -p .
+
+    - name: Wait for execution and check status
+      shell: bash
+      run: |
+        kernel_name="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')"
+        sleep "${{ inputs.sleep_time }}"
+        while true; do
+          status=$(kaggle kernels status "$kernel_name" 2>&1)
+          echo "$status"
+          if echo "$status" | grep -q "complete"; then
+            echo "✅ Execution complete"
+            break
+          elif echo "$status" | grep -qE "error|fail|cancel"; then
+            echo "❌ Kernel failed: $status"
+            exit 1
+          else
+            echo "⏳ Still running, checking again in ${{ inputs.sleep_time }}s..."
+            sleep "${{ inputs.sleep_time }}"
+          fi
+        done

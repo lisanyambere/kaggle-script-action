@@ -1,79 +1,80 @@
 name: Kaggle Script Action
-description: Run model training and CI/CD workflows on Kaggle kernels with free GPU/TPU resources.
-author: Kevin Kibe
+description: Run Python scripts on Kaggle kernels with configurable GPU/TPU/internet options.
+author: Kevin Kibe 
 
 inputs:
   username:
-    description: Kaggle username
+    description: Your Kaggle username
     required: true
   key:
-    description: Kaggle token (API key)
+    description: Your Kaggle API key
     required: true
   title:
-    description: Title of the Kaggle kernel
+    description: Title for the Kaggle kernel
     required: true
   custom_script:
-    description: Custom script content to run in the notebook
+    description: Python command(s) to run inside the kernel
     required: false
     default: |
-      print('Success')
+      print("Hello, world from default script!")
   enable_gpu:
-    description: Enable GPU in kernel
+    description: Enable GPU for the kernel (true/false)
     required: false
-    default: "false"
+    default: "true"
   enable_tpu:
-    description: Enable TPU in kernel
+    description: Enable TPU for the kernel (true/false)
     required: false
     default: "false"
   enable_internet:
-    description: Enable internet access in kernel
+    description: Enable internet access for the kernel (true/false)
     required: false
     default: "true"
+  working_subdir: 
+    description: Subdirectory containing your script 
+    required: false
+    default: ""
   dataset_sources:
-    description: Kaggle dataset sources (username/dataset-slug)
+    description: Comma-separated list of dataset sources 
     required: false
     default: ""
   competition_sources:
-    description: Kaggle competition sources
+    description: Comma-separated list of competition sources
     required: false
     default: ""
   kernel_sources:
-    description: Kaggle kernel data sources (username/kernel-slug)
+    description: Comma-separated list of kernel sources
     required: false
     default: ""
   sleep_time:
-    description: Wait time in seconds before checking kernel status
+    description: Time in seconds to wait between kernel status checks
     required: false
-    default: "15"
-  working_subdir:
-    description: Subdirectory inside the repo to run scripts from
-    required: false
-    default: ""
+    default: "10"
 
 runs:
   using: "composite"
   steps:
-    - name: Install dependencies
+    - name: Install dependencies for the action runner
       shell: bash
       run: |
-        pip install --upgrade kaggle jq
+        pip install kaggle jq
 
-    - name: Set up Kaggle API key
+    - name: Set up Kaggle API token
       shell: bash
       run: |
         mkdir -p ~/.kaggle
         echo "{\"username\":\"${{ inputs.username }}\",\"key\":\"${{ inputs.key }}\"}" > ~/.kaggle/kaggle.json
         chmod 600 ~/.kaggle/kaggle.json
 
-    - name: Create notebook
+    - name: Generate notebook
       shell: bash
       run: |
-        REPO_URL=$(git config --get remote.origin.url)
-        BRANCH_NAME="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
-        NOTEBOOK_PATH="${{ github.action_path }}/script.ipynb"
-        TARGET_DIR="/kaggle/working/$(basename "$REPO_URL" .git)${{ inputs.working_subdir:+/${{ inputs.working_subdir }}}"
-        CUSTOM_SCRIPT=$(echo "${{ inputs.custom_script }}" | awk '{printf "%s\\n", $0}')
-        cat > "$NOTEBOOK_PATH" <<EOF
+
+        
+        NOTEBOOK_FILE=script.ipynb
+
+        ESCAPED_SCRIPT=$(echo "${{ inputs.custom_script }}" | jq -R -s 'split("\n")')
+
+        cat <<-END_OF_NOTEBOOK_CONTENT > $NOTEBOOK_FILE
         {
           "cells": [
             {
@@ -81,21 +82,7 @@ runs:
               "execution_count": null,
               "metadata": {},
               "outputs": [],
-              "source": ["!git clone --branch $BRANCH_NAME $REPO_URL"]
-            },
-            {
-              "cell_type": "code",
-              "execution_count": null,
-              "metadata": {},
-              "outputs": [],
-              "source": ["!cd $TARGET_DIR && pip install -r requirements.txt"]
-            },
-            {
-              "cell_type": "code",
-              "execution_count": null,
-              "metadata": {},
-              "outputs": [],
-              "source": ["!cd $TARGET_DIR && $CUSTOM_SCRIPT"]
+              "source": $ESCAPED_SCRIPT
             }
           ],
           "metadata": {
@@ -108,45 +95,81 @@ runs:
           "nbformat": 4,
           "nbformat_minor": 2
         }
-EOF
+        END_OF_NOTEBOOK_CONTENT 
 
-    - name: Set up kernel metadata
+    - name: Create kernel metadata
       shell: bash
       run: |
-        cd "${{ github.action_path }}"
-        kaggle kernels init -p .
-        jq '.id = "${{ inputs.username }}/'"$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')"'" |
-            .title = "${{ inputs.title }}" |
-            .code_file = "script.ipynb" |
-            .language = "python" |
-            .kernel_type = "notebook" |
-            .enable_gpu = ('${{ inputs.enable_gpu }}' == "true") |
-            .enable_tpu = ('${{ inputs.enable_tpu }}' == "true") |
-            .enable_internet = ('${{ inputs.enable_internet }}' == "true") |
-            .is_private = false' kernel-metadata.json > tmp.json && mv tmp.json kernel-metadata.json
+        KERNEL_ID="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--/-/g')"
+        jq -n \
+          --arg id "$KERNEL_ID" \
+          --arg title "${{ inputs.title }}" \
+          --arg code_file "script.ipynb" \
+          --argjson enable_gpu $([[ "${{ inputs.enable_gpu }}" == "true" ]] && echo true || echo false) \
+          --argjson enable_tpu $([[ "${{ inputs.enable_tpu }}" == "true" ]] && echo true || echo false) \
+          --argjson enable_internet $([[ "${{ inputs.enable_internet }}" == "true" ]] && echo true || echo false) \
+          --arg dataset_sources "${{ inputs.dataset_sources }}" \
+          --arg competition_sources "${{ inputs.competition_sources }}" \
+          --arg kernel_sources "${{ inputs.kernel_sources }}" \
+          '
+          {
+            id: $id,
+            title: $title,
+            code_file: $code_file,
+            language: "python",
+            kernel_type: "notebook",
+            is_private: false, # Consider making this an input
+            enable_gpu: $enable_gpu,
+            enable_tpu: $enable_tpu,
+            enable_internet: $enable_internet,
+            dataset_sources: ($dataset_sources | split(",") | map(select(. != ""))),
+            competition_sources: ($competition_sources | split(",") | map(select(. != ""))),
+            kernel_sources: ($kernel_sources | split(",") | map(select(. != "")))
+          }
+          ' > kernel-metadata.json
 
     - name: Push to Kaggle
       shell: bash
-      run: |
-        cd "${{ github.action_path }}"
-        kaggle kernels push -p .
+      run: kaggle kernels push -p .
 
-    - name: Wait for execution and check status
+    - name: Wait for execution
       shell: bash
       run: |
-        kernel_name="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g')"
-        sleep "${{ inputs.sleep_time }}"
+        KERNEL_ID="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--/-/g')"
+        echo "⌛ Waiting for kernel ($KERNEL_ID) to execute..."
+        # Initial sleep to allow Kaggle to process the push
+        sleep_duration=${{ inputs.sleep_time }}
+        sleep "$sleep_duration"
+        
+        max_attempts=30 # Approx 5 minutes if sleep_time is 10s
+        attempt_num=0
+
         while true; do
-          status=$(kaggle kernels status "$kernel_name" 2>&1)
-          echo "$status"
-          if echo "$status" | grep -q "complete"; then
-            echo "✅ Execution complete"
-            break
-          elif echo "$status" | grep -qE "error|fail|cancel"; then
-            echo "❌ Kernel failed: $status"
+          ((attempt_num++))
+          if ((attempt_num > max_attempts)); then
+            echo "❌ Maximum attempts reached. Kernel status check timed out."
+            kaggle kernels output "$KERNEL_ID" || echo "Failed to get kernel output on timeout."
             exit 1
-          else
-            echo "⏳ Still running, checking again in ${{ inputs.sleep_time }}s..."
-            sleep "${{ inputs.sleep_time }}"
           fi
+
+          # Fetch status, redirecting stderr to stdout to capture all output from kaggle CLI
+          status_output=$(kaggle kernels status "$KERNEL_ID" 2>&1)
+          echo "Attempt $attempt_num: Status: $status_output"
+
+          # Check for various terminal states
+          if echo "$status_output" | grep -q "complete"; then
+            echo "✅ Execution complete for $KERNEL_ID"
+            kaggle kernels output "$KERNEL_ID" # Fetch final output
+            break
+          elif echo "$status_output" | grep -qE "error|failed|cancelled|cancelRequested"; then # Added more failure states
+            echo "❌ Kernel $KERNEL_ID failed or was cancelled. Status: $status_output"
+            kaggle kernels output "$KERNEL_ID" || echo "Failed to get kernel output on failure."
+            exit 1
+          elif echo "$status_output" | grep -q "has no run"; then # Kernel might not have started yet
+             echo "⏳ Kernel $KERNEL_ID has no run yet, or metadata issue. Waiting..."
+          elif echo "$status_output" | grep -q "not found"; then
+             echo "❌ Kernel $KERNEL_ID not found. Check title and username. Waiting for potential propagation..."
+          fi
+          echo "⏳ Still processing, checking again in $sleep_duration seconds..."
+          sleep "$sleep_duration"
         done

@@ -12,6 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Copy test script directory to root
+        run: |
+          cp -r tests/ .
+
       - name: Run Kaggle Script Action
         uses: ./.github/actions/kaggle-action
         with:
@@ -19,8 +23,8 @@ jobs:
           key: ${{ secrets.KAGGLE_KEY }}
           title: "Test Kaggle Script Action"
           custom_script: |
-            python tests/test.py --url "https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82&current_weather=true"
-          working_subdir: "tests"
+            !pip install requests  
+            !python tests/test.py --url "https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82&current_weather=true "
           enable_internet: "true"
           enable_gpu: "true"
           enable_tpu: "false"

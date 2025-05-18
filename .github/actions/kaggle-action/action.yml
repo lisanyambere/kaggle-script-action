@@ -30,11 +30,11 @@ inputs:
     required: false
     default: "true"
   working_subdir:
-    description: Subdirectory containing your script
+    description: Subdirectory containing your script (currently unused in this version)
     required: false
     default: ""
   dataset_sources:
-    description: Comma-separated list of dataset sources
+    description: Comma-separated list of dataset sources (e.g., username/dataset-slug)
     required: false
     default: ""
   competition_sources:
@@ -68,19 +68,10 @@ runs:
     - name: Generate notebook
       shell: bash
       run: |
-        # Ensure consistent indentation for the heredoc content and delimiter
-        # relative to the 'run: |' block. If 'run: |' is indented by 6 spaces,
-        # these lines (cat, content, delimiter) should be indented by 8 spaces.
-        # The delimiter ITSELF must have no leading spaces on its line if not using <<-
-        # or match the indentation of <<- if using that.
-
         NOTEBOOK_FILE=script.ipynb
         ESCAPED_SCRIPT=$(echo "${{ inputs.custom_script }}" | jq -R -s 'split("\n")')
 
-        # Using cat <<DELIMITER (no dash)
-        # The DELIMITER line must have no leading whitespace.
-        # The content of the heredoc is written as is.
-        cat <<END_OF_NOTEBOOK_CONTENT > $NOTEBOOK_FILE
+        cat <<-END_OF_NOTEBOOK_CONTENT > "$NOTEBOOK_FILE"
         {
           "cells": [
             {
@@ -101,19 +92,7 @@ runs:
           "nbformat": 4,
           "nbformat_minor": 2
         }
-END_OF_NOTEBOOK_CONTENT
-        # Verify the generated notebook
-        echo "--- Content of generated script.ipynb: ---"
-        cat $NOTEBOOK_FILE
-        echo "--- End of script.ipynb content ---"
-        # Validate JSON structure of the notebook
-        if jq '.' $NOTEBOOK_FILE > /dev/null 2>&1; then
-          echo "script.ipynb is valid JSON."
-        else
-          echo "Error: script.ipynb is NOT valid JSON. Halting."
-          cat $NOTEBOOK_FILE # Print content again on error
-          exit 1 # Fail early if notebook is malformed
-        fi
+        END_OF_NOTEBOOK_CONTENT
 
     - name: Create kernel metadata
       shell: bash
@@ -136,7 +115,7 @@ END_OF_NOTEBOOK_CONTENT
             code_file: $code_file,
             language: "python",
             kernel_type: "notebook",
-            is_private: false, # Consider making this an input
+            is_private: false,
             enable_gpu: $enable_gpu,
             enable_tpu: $enable_tpu,
             enable_internet: $enable_internet,
@@ -145,33 +124,21 @@ END_OF_NOTEBOOK_CONTENT
             kernel_sources: ($kernel_sources | split(",") | map(select(. != "")))
           }
           ' > kernel-metadata.json
-        # Verify the generated metadata
-        echo "--- Content of generated kernel-metadata.json: ---"
-        cat kernel-metadata.json
-        echo "--- End of kernel-metadata.json content ---"
-        # Validate JSON structure of the metadata
-        if jq '.' kernel-metadata.json > /dev/null 2>&1; then
-          echo "kernel-metadata.json is valid JSON."
-        else
-          echo "Error: kernel-metadata.json is NOT valid JSON. Halting."
-          cat kernel-metadata.json # Print content again on error
-          exit 1 # Fail early if metadata is malformed
-        fi
 
     - name: Push to Kaggle
       shell: bash
-      run: kaggle kernels push -p .
+      run: |
+        kaggle kernels push -p .
 
     - name: Wait for execution
       shell: bash
       run: |
         KERNEL_ID="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--/-/g')"
         echo "⌛ Waiting for kernel ($KERNEL_ID) to execute..."
-        # Initial sleep to allow Kaggle to process the push
         sleep_duration=${{ inputs.sleep_time }}
         sleep "$sleep_duration"
 
-        max_attempts=30 # Approx 5 minutes if sleep_time is 10s
+        max_attempts=30
         attempt_num=0
 
         while true; do
@@ -182,24 +149,23 @@ END_OF_NOTEBOOK_CONTENT
             exit 1
           fi
 
-          # Fetch status, redirecting stderr to stdout to capture all output from kaggle CLI
           status_output=$(kaggle kernels status "$KERNEL_ID" 2>&1)
           echo "Attempt $attempt_num: Status: $status_output"
 
-          # Check for various terminal states
           if echo "$status_output" | grep -q "complete"; then
             echo "✅ Execution complete for $KERNEL_ID"
-            kaggle kernels output "$KERNEL_ID" # Fetch final output
+            kaggle kernels output "$KERNEL_ID"
             break
-          elif echo "$status_output" | grep -qE "error|failed|cancelled|cancelRequested"; then # Added more failure states
+          elif echo "$status_output" | grep -qE "error|failed|cancelled|cancelRequested"; then
             echo "❌ Kernel $KERNEL_ID failed or was cancelled. Status: $status_output"
             kaggle kernels output "$KERNEL_ID" || echo "Failed to get kernel output on failure."
             exit 1
-          elif echo "$status_output" | grep -q "has no run"; then # Kernel might not have started yet
-             echo "⏳ Kernel $KERNEL_ID has no run yet, or metadata issue. Waiting..."
+          elif echo "$status_output" | grep -q "has no run"; then
+            echo "⏳ Kernel $KERNEL_ID has no run yet. Waiting..."
           elif echo "$status_output" | grep -q "not found"; then
-             echo "❌ Kernel $KERNEL_ID not found. Check title and username. Waiting for potential propagation..."
+            echo "❌ Kernel $KERNEL_ID not found. Check title and username."
           fi
+
           echo "⏳ Still processing, checking again in $sleep_duration seconds..."
           sleep "$sleep_duration"
         done

@@ -69,9 +69,10 @@ runs:
       shell: bash
       run: |
         NOTEBOOK_FILE=script.ipynb
-        ESCAPED_SCRIPT=$(echo "${{ inputs.custom_script }}" | jq -R -s 'split("\n")')
+        # Properly escape the script for JSON inclusion
+        ESCAPED_SCRIPT=$(echo '${{ inputs.custom_script }}' | jq -Rs 'split("\n")')
 
-        cat <<-END_OF_NOTEBOOK_CONTENT > "$NOTEBOOK_FILE"
+        cat <<EOF > "$NOTEBOOK_FILE"
         {
           "cells": [
             {
@@ -92,38 +93,33 @@ runs:
           "nbformat": 4,
           "nbformat_minor": 2
         }
-        END_OF_NOTEBOOK_CONTENT
+        EOF
 
     - name: Create kernel metadata
       shell: bash
       run: |
         KERNEL_ID="${{ inputs.username }}/$(echo "${{ inputs.title }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--/-/g')"
-        jq -n \
-          --arg id "$KERNEL_ID" \
-          --arg title "${{ inputs.title }}" \
-          --arg code_file "script.ipynb" \
-          --argjson enable_gpu $([[ "${{ inputs.enable_gpu }}" == "true" ]] && echo true || echo false) \
-          --argjson enable_tpu $([[ "${{ inputs.enable_tpu }}" == "true" ]] && echo true || echo false) \
-          --argjson enable_internet $([[ "${{ inputs.enable_internet }}" == "true" ]] && echo true || echo false) \
-          --arg dataset_sources "${{ inputs.dataset_sources }}" \
-          --arg competition_sources "${{ inputs.competition_sources }}" \
-          --arg kernel_sources "${{ inputs.kernel_sources }}" \
-          '
-          {
-            id: $id,
-            title: $title,
-            code_file: $code_file,
-            language: "python",
-            kernel_type: "notebook",
-            is_private: false,
-            enable_gpu: $enable_gpu,
-            enable_tpu: $enable_tpu,
-            enable_internet: $enable_internet,
-            dataset_sources: ($dataset_sources | split(",") | map(select(. != ""))),
-            competition_sources: ($competition_sources | split(",") | map(select(. != ""))),
-            kernel_sources: ($kernel_sources | split(",") | map(select(. != "")))
-          }
-          ' > kernel-metadata.json
+        # Fix - use heredoc with explicit EOF marker instead of quotes to avoid JSON parsing issues
+        cat > kernel-metadata.json << EOF
+        {
+          "id": "$KERNEL_ID",
+          "title": "${{ inputs.title }}",
+          "code_file": "script.ipynb",
+          "language": "python",
+          "kernel_type": "notebook",
+          "is_private": false,
+          "enable_gpu": $([ "${{ inputs.enable_gpu }}" = "true" ] && echo "true" || echo "false"),
+          "enable_tpu": $([ "${{ inputs.enable_tpu }}" = "true" ] && echo "true" || echo "false"),
+          "enable_internet": $([ "${{ inputs.enable_internet }}" = "true" ] && echo "true" || echo "false"),
+          "dataset_sources": [$([ -n "${{ inputs.dataset_sources }}" ] && echo "\"$(echo '${{ inputs.dataset_sources }}' | sed 's/,/","/g')\"" || echo "")],
+          "competition_sources": [$([ -n "${{ inputs.competition_sources }}" ] && echo "\"$(echo '${{ inputs.competition_sources }}' | sed 's/,/","/g')\"" || echo "")],
+          "kernel_sources": [$([ -n "${{ inputs.kernel_sources }}" ] && echo "\"$(echo '${{ inputs.kernel_sources }}' | sed 's/,/","/g')\"" || echo "")]
+        }
+        EOF
+        
+        # Output the metadata file for debugging
+        echo "Generated kernel-metadata.json:"
+        cat kernel-metadata.json
 
     - name: Push to Kaggle
       shell: bash

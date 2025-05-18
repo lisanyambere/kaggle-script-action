@@ -12,11 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # THIS STEP HAS BEEN REMOVED
-      # - name: Copy test script directory to root
-      #   run: |
-      #     cp -r tests/ .
-
       - name: Run Kaggle Script Action
         uses: ./.github/actions/kaggle-action
         with:
@@ -24,8 +19,21 @@ jobs:
           key: ${{ secrets.KAGGLE_KEY }}
           title: "Test Kaggle Script Action"
           custom_script: |
-            !pip install requests  
-            !python tests/test.py --url "https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82¤t_weather=true" # Removed trailing space from URL
+            !pip install requests
+            import requests
+            import json
+            
+            url = 'https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82&current_weather=true'
+            print(f'Making request to: {url}')
+            response = requests.get(url)
+            print(f'Status code: {response.status_code}')
+            
+            if response.status_code == 200:
+                data = response.json()
+                print('Response data:')
+                print(json.dumps(data, indent=2))
+            else:
+                print(f'Error: {response.text}')
           enable_internet: "true"
           enable_gpu: "true"
           enable_tpu: "false"

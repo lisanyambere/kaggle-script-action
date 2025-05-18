@@ -1,6 +1,6 @@
 name: Kaggle Script Action
 description: Run Python scripts on Kaggle kernels with configurable GPU/TPU/internet options.
-author: Kevin Kibe 
+author: Kevin Kibe
 
 inputs:
   username:
@@ -29,12 +29,12 @@ inputs:
     description: Enable internet access for the kernel (true/false)
     required: false
     default: "true"
-  working_subdir: 
-    description: Subdirectory containing your script 
+  working_subdir:
+    description: Subdirectory containing your script
     required: false
     default: ""
   dataset_sources:
-    description: Comma-separated list of dataset sources 
+    description: Comma-separated list of dataset sources
     required: false
     default: ""
   competition_sources:
@@ -68,13 +68,19 @@ runs:
     - name: Generate notebook
       shell: bash
       run: |
+        # Ensure consistent indentation for the heredoc content and delimiter
+        # relative to the 'run: |' block. If 'run: |' is indented by 6 spaces,
+        # these lines (cat, content, delimiter) should be indented by 8 spaces.
+        # The delimiter ITSELF must have no leading spaces on its line if not using <<-
+        # or match the indentation of <<- if using that.
 
-        
         NOTEBOOK_FILE=script.ipynb
-
         ESCAPED_SCRIPT=$(echo "${{ inputs.custom_script }}" | jq -R -s 'split("\n")')
 
-        cat <<-END_OF_NOTEBOOK_CONTENT > $NOTEBOOK_FILE
+        # Using cat <<DELIMITER (no dash)
+        # The DELIMITER line must have no leading whitespace.
+        # The content of the heredoc is written as is.
+        cat <<END_OF_NOTEBOOK_CONTENT > $NOTEBOOK_FILE
         {
           "cells": [
             {
@@ -95,7 +101,19 @@ runs:
           "nbformat": 4,
           "nbformat_minor": 2
         }
-        END_OF_NOTEBOOK_CONTENT 
+END_OF_NOTEBOOK_CONTENT
+        # Verify the generated notebook
+        echo "--- Content of generated script.ipynb: ---"
+        cat $NOTEBOOK_FILE
+        echo "--- End of script.ipynb content ---"
+        # Validate JSON structure of the notebook
+        if jq '.' $NOTEBOOK_FILE > /dev/null 2>&1; then
+          echo "script.ipynb is valid JSON."
+        else
+          echo "Error: script.ipynb is NOT valid JSON. Halting."
+          cat $NOTEBOOK_FILE # Print content again on error
+          exit 1 # Fail early if notebook is malformed
+        fi
 
     - name: Create kernel metadata
       shell: bash
@@ -127,6 +145,18 @@ runs:
             kernel_sources: ($kernel_sources | split(",") | map(select(. != "")))
           }
           ' > kernel-metadata.json
+        # Verify the generated metadata
+        echo "--- Content of generated kernel-metadata.json: ---"
+        cat kernel-metadata.json
+        echo "--- End of kernel-metadata.json content ---"
+        # Validate JSON structure of the metadata
+        if jq '.' kernel-metadata.json > /dev/null 2>&1; then
+          echo "kernel-metadata.json is valid JSON."
+        else
+          echo "Error: kernel-metadata.json is NOT valid JSON. Halting."
+          cat kernel-metadata.json # Print content again on error
+          exit 1 # Fail early if metadata is malformed
+        fi
 
     - name: Push to Kaggle
       shell: bash
@@ -140,7 +170,7 @@ runs:
         # Initial sleep to allow Kaggle to process the push
         sleep_duration=${{ inputs.sleep_time }}
         sleep "$sleep_duration"
-        
+
         max_attempts=30 # Approx 5 minutes if sleep_time is 10s
         attempt_num=0
 

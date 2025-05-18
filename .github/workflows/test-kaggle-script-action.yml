@@ -12,9 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Copy test script directory to root
-        run: |
-          cp -r tests/ .
+      # THIS STEP HAS BEEN REMOVED
+      # - name: Copy test script directory to root
+      #   run: |
+      #     cp -r tests/ .
 
       - name: Run Kaggle Script Action
         uses: ./.github/actions/kaggle-action
@@ -24,7 +25,7 @@ jobs:
           title: "Test Kaggle Script Action"
           custom_script: |
             !pip install requests  
-            !python tests/test.py --url "https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82&current_weather=true "
+            !python tests/test.py --url "https://api.open-meteo.com/v1/forecast?latitude=-1.29&longitude=36.82¤t_weather=true" # Removed trailing space from URL
           enable_internet: "true"
           enable_gpu: "true"
           enable_tpu: "false"
